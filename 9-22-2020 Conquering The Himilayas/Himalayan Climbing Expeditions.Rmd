@@ -1,0 +1,227 @@
+---
+title: "Tidy Tuesday Himalayan Climbing Expeditions"
+author: "The DataViz"
+date: "9/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Tidy Tuesday Week of Sept 22 2020
+
+## [Tidy Tuesday Data Background](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-09-22/readme.md)
+
+The data this week comes from [The Himalayan Database](https://www.himalayandatabase.com/).
+
+The Himalayan Database is a compilation of records for all expeditions that have climbed in the Nepal Himalaya. The database is based on the expedition archives of Elizabeth Hawley, a longtime journalist based in Kathmandu, and it is supplemented by information gathered from books, alpine journals and correspondence with Himalayan climbers.
+
+The data cover all expeditions from 1905 through Spring 2019 to more than 465 significant peaks in Nepal. Also included are expeditions to both sides of border peaks such as Everest, Cho Oyu, Makalu and Kangchenjunga as well as to some smaller border peaks. Data on expeditions to trekking peaks are included for early attempts, first ascents and major accidents.
+
+h/t to [Alex Cookson](https://twitter.com/alexcookson) for sharing and cleaning this data!
+
+This [blog post](https://www.alexcookson.com/post/analyzing-himalayan-peaks-first-ascents/) by Alex Cookson explores the data in greater detail.
+
+I don't want to underplay that there are some positives and some awful negatives for native Sherpa climbers. [One-third of Everest deaths are Sherpa Climbers](https://www.npr.org/sections/parallels/2018/04/14/599417489/one-third-of-everest-deaths-are-sherpa-climbers).
+
+Also National Geographic has [5 Ways to help the Sherpas of Everest](https://www.nationalgeographic.com/news/2014/4/140424-sherpas-avalanche-help-donations/).
+
+## Load Libraries
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+# Library for Ridge Plots
+library(ggridges)
+# Library to easily reorder factors
+library(forcats)
+# Library to wrap long Strings in ggplot
+library(scales)
+```
+
+
+## Read in Data
+
+```{r}
+members <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-22/members.csv')
+expeditions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-22/expeditions.csv')
+peaks <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-22/peaks.csv')
+```
+
+
+## Analysis of peaks.csv
+
+```{r}
+peaks %>% arrange(first_ascent_year)
+```
+
+Sharphu II has a typo in the year climbed: the data says 201 but in this article it details 2018. (https://gripped.com/news/first-ascent-of-sharphu-ii-in-nepals-kangchenjunga/) 
+
+```{r}
+peaks[peaks$peak_id=="SPH2","first_ascent_year"] <- 2018
+```
+
+```{r}
+peaks %>% filter(peak_name=="Everest")
+```
+
+
+```{r}
+ggplot(
+  data = peaks,
+  aes(x = first_ascent_year,y = height_metres)
+) + geom_point()
+```
+
+### Get a number of peaks left to climb by year
+
+```{r}
+count_of_peaks <- nrow(peaks)
+peaks_years <- peaks %>% filter(!is.na(first_ascent_year)) %>% 
+                         group_by(first_ascent_year) %>%
+                         summarize(count = n(),
+                                   mean_height = max(height_metres)
+                                   ) %>% ungroup() %>%
+                         mutate(cumulative_peaks = cumsum(count),
+                                peaks_left = count_of_peaks-cumulative_peaks)
+```
+
+
+
+```{r fig.height=10, fig.width=7, message=FALSE, warning=FALSE}
+ggplot(
+  data = peaks_years,
+  aes(x = first_ascent_year,y = peaks_left, color = mean_height)
+) + geom_point() + 
+  # First point Description
+  annotate(
+    geom = "curve", x = 1925, y = 400, xend = 1910, yend = 465, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(geom = "text", x = 1915, y = 390, size = 4,
+           label = "Langpo Climbed\nin 1909", 
+           hjust = "left")+
+  # Everest Description
+  annotate(
+    geom = "curve", x = 2000, y = 400, xend = 1955, yend = 441, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm"))
+  ) +
+  annotate(geom = "text", x = 1990, y = 390, size = 4,
+           label = "Everest Climbed\nin 1953", 
+           hjust = "left")+
+  scale_y_continuous(limits = c(0,count_of_peaks)) + 
+  ylab("Count of Remaining Peaks")+
+  xlab("Year")+
+  labs(title="Conquering the Himalayas",
+       subtitle="There are Still 132 Peaks Left to Climb as of 2020",
+       color = "Average Height of\nPeaks Climbed [m]",
+       caption="Source : The Himalayan Database | Analysis: The DataViz"
+       ) +
+  theme_bw()
+ggsave("Peaks_Climbed.png")
+```
+
+## Analysis of expeditions.csv
+
+```{r}
+expeditions %>% arrange(year)
+```
+
+### Visual of Success Rate of Expeditions per year
+
+```{r}
+expedition_success_by_year <- expeditions %>% 
+                mutate(success = ifelse(grepl("Success",termination_reason),
+                                        "Succeeded","Failed")) %>% 
+                group_by(year, success) %>% 
+                summarize(count = n()) %>% ungroup() %>% 
+                spread(success,count) %>% replace(is.na(.), 0) %>%
+                mutate(total_expeditions = Failed+Succeeded,
+                       success_rate = Succeeded/total_expeditions
+                       )
+expedition_success_by_year
+```
+
+```{r}
+ggplot(
+  data = expedition_success_by_year,
+  aes(x=year,y=success_rate)
+) + geom_point() + geom_smooth(method = "lm",formula='y ~ x') + ylim(c(0,1)) 
+```
+
+### Visualization of success by season
+
+```{r}
+expedition_success_by_season <- expeditions %>% 
+                mutate(success = ifelse(grepl("Success",termination_reason),
+                                        "Succeeded","Failed")) %>% 
+                group_by(season, success) %>% 
+                summarize(count = n()) %>% ungroup() %>% 
+                spread(success,count) %>% replace(is.na(.), 0) %>%
+                mutate(total_expeditions = Failed+Succeeded,
+                       success_rate = Succeeded/total_expeditions
+                       )
+expedition_success_by_season
+```
+
+### Visualization of success by group size
+
+There are some weird groups of size 0. For my analysis on group size I dont want them.
+```{r}
+expeditions %>% filter(members == 0) %>% arrange(members)
+```
+
+
+```{r}
+expedition_success_by_expedition_size <- expeditions %>% 
+                mutate(group_size = members + hired_staff,
+                       success = ifelse(grepl("Success",termination_reason),
+                                        "Succeeded","Failed")) %>% 
+                filter(group_size > 0) %>% 
+                group_by(group_size, success) %>% 
+                summarize(count = n()) %>% ungroup() %>% 
+                spread(success,count) %>% replace(is.na(.), 0) %>%
+                mutate(total_expeditions = Failed+Succeeded,
+                       success_rate = Succeeded/total_expeditions
+                       )
+expedition_success_by_expedition_size
+```
+
+```{r}
+ggplot(
+  data = expedition_success_by_expedition_size,
+  aes(x=group_size,y=success_rate)
+) + geom_point() 
+```
+
+```{r}
+expedition_terminations_by_year <- expeditions %>% 
+    filter(!grepl("Success",termination_reason),
+           !grepl("Attempt rumoured",termination_reason),
+           !grepl("Unknown",termination_reason),
+           !grepl("Other",termination_reason)
+           ) %>%
+    group_by(year,termination_reason) %>%
+    count() %>% ungroup() %>%
+    mutate(termination_reason = fct_reorder(termination_reason, n))
+expedition_terminations_by_year
+```
+
+
+
+```{r fig.height=7, fig.width=12, message=FALSE, warning=FALSE}
+ggplot(
+  data = expedition_terminations_by_year,
+  aes(x=year,y=termination_reason,height=n,fill=termination_reason)
+) + geom_density_ridges(stat="identity") + 
+  theme_bw() + 
+  theme(legend.position = "none") +
+  scale_y_discrete(labels = wrap_format(35))+
+  ylab("")+
+  xlab("Year")+
+  labs(title="Conquering the Himalayas",
+       subtitle="Most Failed Expiditions are due to Weather and Conditions",
+       caption="Source : The Himalayan Database | Analysis: The DataViz"
+       ) 
+ggsave("Failed_expeditions.png")
+```
