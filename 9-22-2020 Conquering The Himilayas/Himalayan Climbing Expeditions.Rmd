@@ -37,6 +37,12 @@ library(ggridges)
 library(forcats)
 # Library to wrap long Strings in ggplot
 library(scales)
+# Library to plot images in ggplot
+library(ggimage)
+# Library with good dark ggplot themes
+library(ggdark)
+# Library that makes file path handling easier 
+library(here)
 ```
 
 
@@ -70,7 +76,7 @@ peaks %>% filter(peak_name=="Everest")
 ggplot(
   data = peaks,
   aes(x = first_ascent_year,y = height_metres)
-) + geom_point()
+) + geom_point(color='black') + theme_bw()
 ```
 
 ### Get a number of peaks left to climb by year
@@ -115,7 +121,7 @@ ggplot(
   labs(title="Conquering the Himalayas",
        subtitle="There are Still 132 Peaks Left to Climb as of 2020",
        color = "Average Height of\nPeaks Climbed [m]",
-       caption="Source : The Himalayan Database | Analysis: The DataViz"
+       caption="Source : The Himalayan Database | Analysis: @The_DataViz"
        ) +
   theme_bw()
 ggsave("Peaks_Climbed.png")
@@ -146,7 +152,7 @@ expedition_success_by_year
 ggplot(
   data = expedition_success_by_year,
   aes(x=year,y=success_rate)
-) + geom_point() + geom_smooth(method = "lm",formula='y ~ x') + ylim(c(0,1)) 
+) + geom_point(color='black') + geom_smooth(method = "lm",formula='y ~ x') + ylim(c(0,1)) 
 ```
 
 ### Visualization of success by season
@@ -191,7 +197,7 @@ expedition_success_by_expedition_size
 ggplot(
   data = expedition_success_by_expedition_size,
   aes(x=group_size,y=success_rate)
-) + geom_point() 
+) + geom_point(color='black') 
 ```
 
 ```{r}
@@ -214,14 +220,101 @@ ggplot(
   data = expedition_terminations_by_year,
   aes(x=year,y=termination_reason,height=n,fill=termination_reason)
 ) + geom_density_ridges(stat="identity") + 
-  theme_bw() + 
+  theme_ridges() + 
   theme(legend.position = "none") +
   scale_y_discrete(labels = wrap_format(35))+
   ylab("")+
   xlab("Year")+
   labs(title="Conquering the Himalayas",
        subtitle="Most Failed Expiditions are due to Weather and Conditions",
-       caption="Source : The Himalayan Database | Analysis: The DataViz"
+       caption="Source : The Himalayan Database | Analysis: @The_DataViz"
        ) 
 ggsave("Failed_expeditions.png")
 ```
+
+## Analysis of members.csv
+
+```{r}
+members
+```
+
+### Peak Popularity
+
+```{r}
+peak_popularity <- members %>% group_by(peak_id) %>% count() %>% arrange(desc(n))
+peak_popularity
+```
+
+### Members Citizenship
+
+```{r}
+members_corrected <- members
+members_corrected %>% mutate(citizenship = str_replace(citizenship, 
+                                                       "W Germany",
+                                                       "Germany")) %>%
+ group_by(citizenship) %>% 
+  count() %>% 
+  ungroup() %>%
+  arrange(desc(n)) 
+```
+Build Dataframe with image links
+```{r}
+citizenship_counts <- members %>% filter(hired==FALSE)%>%
+  mutate(citizenship = str_replace(citizenship,"W Germany","Germany")) %>%
+  group_by(citizenship) %>% 
+  count() %>% 
+  ungroup() %>%
+  arrange(desc(n)) %>% 
+  top_n(10,n) %>% 
+  arrange(citizenship) %>% 
+  mutate(img = list.files(here::here('9-22-2020 Conquering The Himilayas',
+                                     'Flags'), full.names = TRUE)) %>%
+  arrange(desc(n)) %>% mutate(rank = 1:10)
+citizenship_counts
+```
+
+
+```{r fig.height=10, fig.width=10}
+colors <- c("#D9919A", "#5E81AC", "#81A1C1", "#B48EAD", "#D08770", 
+            "#EBCB8B", "#BF616A", "#A3BE8C", "#B48EAD",  "#ED3B43")
+
+ggplot(citizenship_counts, aes(reorder(citizenship, desc(n)), n)) +
+  geom_col(
+    aes(fill = as.factor(rank),
+        color = as.factor(rank)), 
+    show.legend = FALSE) +
+  geom_image(y = -370,
+             aes(image = img), 
+             size = rep(0.09, 10),  # Play with this a bit
+             by = "width") +
+  scale_fill_manual(values = colors) +
+  scale_color_manual(values = colors) +
+  scale_y_continuous(labels = scales::comma) +
+  expand_limits(y = -370) +
+  labs(x = "", y="Count of Expedition Members",
+       title="Conquering the Himalayas",
+       subtitle = 'Top 10 Countries of Climbers (1909-2020)',
+       caption="Source : The Himalayan Database | Analysis: @The_DataViz") +
+  theme_bw()
+```
+
+```{r}
+members %>% filter(hired==FALSE) %>% mutate(citizenship = str_replace(citizenship, 
+                                                       "W Germany",
+                                                       "Germany")) %>%
+  group_by(citizenship) %>% 
+  count() %>% 
+  ungroup() %>%
+  arrange(desc(n)) %>% 
+  top_n(10,n) 
+
+```
+
+
+
+
+
+
+
+
+
