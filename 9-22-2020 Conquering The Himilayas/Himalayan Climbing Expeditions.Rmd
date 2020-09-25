@@ -2,7 +2,9 @@
 title: "Tidy Tuesday Himalayan Climbing Expeditions"
 author: "The DataViz"
 date: "9/22/2020"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -88,10 +90,17 @@ count_of_peaks <- nrow(peaks)
 peaks_years <- peaks %>% filter(!is.na(first_ascent_year)) %>% 
                          group_by(first_ascent_year) %>%
                          summarize(count = n(),
-                                   mean_height = max(height_metres)
+                                   max_height = max(height_metres)
                                    ) %>% ungroup() %>%
                          mutate(cumulative_peaks = cumsum(count),
                                 peaks_left = count_of_peaks-cumulative_peaks)
+```
+
+Average height of unclimbed peaks 
+
+```{r message=FALSE, warning=FALSE}
+peaks %>% group_by(climbing_status) %>%
+                         summarize(mean_height = mean(height_metres,na.rm = T))
 ```
 
 
@@ -99,34 +108,35 @@ peaks_years <- peaks %>% filter(!is.na(first_ascent_year)) %>%
 ```{r fig.height=10, fig.width=7, message=FALSE, warning=FALSE}
 ggplot(
   data = peaks_years,
-  aes(x = first_ascent_year,y = peaks_left, color = mean_height)
+  aes(x = first_ascent_year,y = peaks_left, color = max_height)
 ) + geom_point() + 
+  theme_bw()+
+  theme(plot.title = element_text(face="bold"))+
   # First point Description
   annotate(
     geom = "curve", x = 1925, y = 400, xend = 1910, yend = 465, 
-    curvature = .1, arrow = arrow(length = unit(2, "mm"))
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color="black"
   ) +
   annotate(geom = "text", x = 1915, y = 390, size = 4,
            label = "Langpo Climbed\nin 1909", 
-           hjust = "left")+
+           hjust = "left",color="black")+
   # Everest Description
   annotate(
     geom = "curve", x = 2000, y = 400, xend = 1955, yend = 441, 
-    curvature = .1, arrow = arrow(length = unit(2, "mm"))
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color="black"
   ) +
   annotate(geom = "text", x = 1990, y = 390, size = 4,
            label = "Everest Climbed\nin 1953", 
-           hjust = "left")+
+           hjust = "left",color="black")+
   scale_y_continuous(limits = c(0,count_of_peaks)) + 
   ylab("Count of Remaining Peaks")+
   xlab("Year")+
   labs(title="Conquering the Himalayas",
        subtitle="There are Still 132 Peaks Left to Climb as of 2019",
-       color = "Average Height of\nPeaks Climbed [m]",
+       color = "Height of Tallest Peak\nClimbed For First Time\n[m]",
        caption="Source : The Himalayan Database | Analysis: @The_DataViz"
-       ) +
-  theme_bw()+
-  theme(plot.title = element_text(face="bold"))
+       ) 
+  
 ggsave("Peaks_Climbed.png")
 ```
 
@@ -151,11 +161,23 @@ expedition_success_by_year <- expeditions %>%
 expedition_success_by_year
 ```
 
-```{r}
+```{r fig.height=4.05, fig.width=6.55, message=FALSE, warning=FALSE}
 ggplot(
   data = expedition_success_by_year,
   aes(x=year,y=success_rate)
-) + geom_point(color='black') + geom_smooth(method = "lm",formula='y ~ x') + ylim(c(0,1)) 
+) + geom_point(color='black') + 
+  geom_smooth(method = "lm",formula='y ~ x') + 
+  ylim(c(0,1)) + 
+  theme_bw()+
+  theme(plot.title = element_text(face="bold"))+
+  ylab("Success Rate")+
+  xlab("Year")+
+  labs(title="Conquering the Himalayas",
+       subtitle="Success Rates are Trending Up",
+       color = "Height of Tallest Peak\nClimbed For First Time\n[m]",
+       caption="Source : The Himalayan Database | Analysis: @The_DataViz"
+       ) 
+ggsave("Success_Rates.png")
 ```
 
 ### Visualization of success by season
@@ -202,6 +224,23 @@ ggplot(
   aes(x=group_size,y=success_rate)
 ) + geom_point(color='black') 
 ```
+
+```{r}
+group_size_successes <- expeditions %>% 
+                mutate(group_size = members + hired_staff,
+                       success = ifelse(grepl("Success",termination_reason),
+                                        "Succeeded","Failed")) %>% 
+                filter(group_size > 0)
+```
+
+```{r}
+ggplot(
+  data = group_size_successes,
+  aes(x = group_size,fill = success)
+) + geom_density(alpha=0.4) + 
+  theme_bw()
+```
+
 
 ```{r}
 expedition_terminations_by_year <- expeditions %>% 
@@ -332,7 +371,7 @@ ggplot(citizenship_counts, aes(reorder(citizenship, desc(n)), n)) +
   expand_limits(y = -370) +
   labs(x = "", y="Count of Expedition Members",
        title="Conquering the Himalayas",
-       subtitle = 'Top 10 Countries of Climbers (1909-2020)',
+       subtitle = 'Top 10 Countries of Climbers (1909-2019)',
        caption="Source : The Himalayan Database | Analysis: @The_DataViz") +
   theme_bw()+
   theme(plot.title = element_text(face="bold"))
@@ -350,11 +389,46 @@ members %>% filter(hired==TRUE) %>% mutate(citizenship = str_replace(citizenship
 
 ```
 
+### Average Age of Climbers 
+
+I will keep values with a count of at least 10 
+
+```{r message=FALSE, warning=FALSE}
+age_statistics <- members %>% filter(hired==F) %>% group_by(age) %>% 
+                              summarize( count = n(),
+                                         everest_rate = mean(peak_name=="Everest"),
+                                        success_rate = mean(success),
+                                        oxygen_rate = mean(oxygen_used),
+                                        injury_rate = mean(injured),
+                                        death_rate = mean(died),
+                                        solo_rate = mean(solo)) %>%
+                              filter(count>=10) %>% 
+                              select(-count) %>%
+                              gather("statistic","rate",-age)
+```
 
 
+```{r}
+ggplot(
+  data = age_statistics,
+  aes(x= age,y=rate,color=statistic)
+) + geom_line() + ylim(c(0,1))
+```
 
+```{r message=FALSE, warning=FALSE}
+climber_age_by_year <- members %>% filter(hired==F) %>% group_by(year) %>% 
+                              summarize( count = n(),
+                                         avg_age = mean(age,na.rm=T)
+                              ) %>% 
+                              filter(count>25)
+```
 
-
+```{r}
+ggplot(
+  data = climber_age_by_year,
+  aes(x= year,y=avg_age)
+) + geom_line(color="black") + theme_bw()
+```
 
 
 
