@@ -43,6 +43,8 @@ library(ggimage)
 library(ggdark)
 # Library that makes file path handling easier 
 library(here)
+# Library to create color maps
+library(RColorBrewer)
 ```
 
 
@@ -119,11 +121,12 @@ ggplot(
   ylab("Count of Remaining Peaks")+
   xlab("Year")+
   labs(title="Conquering the Himalayas",
-       subtitle="There are Still 132 Peaks Left to Climb as of 2020",
+       subtitle="There are Still 132 Peaks Left to Climb as of 2019",
        color = "Average Height of\nPeaks Climbed [m]",
        caption="Source : The Himalayan Database | Analysis: @The_DataViz"
        ) +
-  theme_bw()
+  theme_bw()+
+  theme(plot.title = element_text(face="bold"))
 ggsave("Peaks_Climbed.png")
 ```
 
@@ -238,28 +241,64 @@ ggsave("Failed_expeditions.png")
 members
 ```
 
-### Peak Popularity
+### Peak Popularity over time for years with at least 25 climbers
+
+What share of all climbers climb the top 10 peaks
 
 ```{r}
-peak_popularity <- members %>% group_by(peak_id) %>% count() %>% arrange(desc(n))
+top_3_peaks <- members %>% 
+  filter(hired==FALSE) %>% 
+  group_by(peak_name) %>% 
+  count() %>% 
+  ungroup() %>%
+  arrange(desc(n)) %>%
+  top_n(3,n)
+
+peak_popularity <- members %>% 
+  filter(hired==FALSE) %>%
+  mutate(top3 = peak_name %in% top_3_peaks$peak_name) %>% 
+  group_by(top3,year) %>% 
+  count() %>% 
+  ungroup() %>%
+  spread(top3,n) %>% 
+  replace(is.na(.), 0) %>%
+  mutate(total = `FALSE`+`TRUE`,
+         perc_top3 = `TRUE`/total,
+         perc_rest = 1-perc_top3) %>%
+  filter(total>25)
+
 peak_popularity
 ```
 
+```{r fig.height=4.05, fig.width=6.55, message=FALSE, warning=FALSE}
+myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
+
+ggplot(
+  data = peak_popularity,
+  aes(x=year,y=perc_top3,color=total)
+) + geom_line() + 
+  ylim(c(0,1)) +
+  ylab("Percent of Climbers\nclimbing a top 3 peak")+
+  xlab("Year")+
+  labs(title="Conquering the Himalayas",
+       subtitle="Over 50% of Himalayan Climbers since 2000\nAttempt Everest, Cho Oyu or Ama Dablam",
+       color="Total Climbers",
+       caption="Source : The Himalayan Database | Analysis: @The_DataViz"
+       ) + 
+  scale_color_gradientn(colors = myPalette(100),
+                        limits=c(0, max(peak_popularity$total))) + 
+  dark_theme_bw()+
+  theme(plot.title = element_text(face="bold"))
+ggsave("Top3_Peak_Climber_Share.png")
+```
+
+
+
 ### Members Citizenship
 
+Build Data frame with image links from Flags Folder (ordered by country name)
 ```{r}
-members_corrected <- members
-members_corrected %>% mutate(citizenship = str_replace(citizenship, 
-                                                       "W Germany",
-                                                       "Germany")) %>%
- group_by(citizenship) %>% 
-  count() %>% 
-  ungroup() %>%
-  arrange(desc(n)) 
-```
-Build Dataframe with image links
-```{r}
-citizenship_counts <- members %>% filter(hired==FALSE)%>%
+citizenship_counts <- members %>% filter(hired==FALSE) %>%
   mutate(citizenship = str_replace(citizenship,"W Germany","Germany")) %>%
   group_by(citizenship) %>% 
   count() %>% 
@@ -274,9 +313,9 @@ citizenship_counts
 ```
 
 
-```{r fig.height=10, fig.width=10}
+```{r fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
 colors <- c("#D9919A", "#5E81AC", "#81A1C1", "#B48EAD", "#D08770", 
-            "#EBCB8B", "#BF616A", "#A3BE8C", "#B48EAD",  "#ED3B43")
+            "#EBCB8B", "#BF616A", "#A3BE8C", "#FF8080",  "#ED2939")
 
 ggplot(citizenship_counts, aes(reorder(citizenship, desc(n)), n)) +
   geom_col(
@@ -295,18 +334,19 @@ ggplot(citizenship_counts, aes(reorder(citizenship, desc(n)), n)) +
        title="Conquering the Himalayas",
        subtitle = 'Top 10 Countries of Climbers (1909-2020)',
        caption="Source : The Himalayan Database | Analysis: @The_DataViz") +
-  theme_bw()
+  theme_bw()+
+  theme(plot.title = element_text(face="bold"))
+ggsave("Climber_citizenship.png")
 ```
-
+Look at hired help
 ```{r}
-members %>% filter(hired==FALSE) %>% mutate(citizenship = str_replace(citizenship, 
+members %>% filter(hired==TRUE) %>% mutate(citizenship = str_replace(citizenship, 
                                                        "W Germany",
                                                        "Germany")) %>%
   group_by(citizenship) %>% 
   count() %>% 
   ungroup() %>%
-  arrange(desc(n)) %>% 
-  top_n(10,n) 
+  arrange(desc(n)) 
 
 ```
 
