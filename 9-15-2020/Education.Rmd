@@ -1,0 +1,123 @@
+---
+title: "Educational Analysis"
+author: "Hunter Kempf"
+date: "9/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+# Library that makes file path handling easier 
+library(here)
+```
+
+## Read Datasets 
+First lets download the Kids.csv from tidy tuesday's github this is clean data so we dont have to do anything to it.
+```{r}
+kids <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-15/kids.csv')
+```
+
+Next lets load in the NAEP data this is a bit more messy since it is in a multi-tab excel file. We will use the NAEP_overtime sheet which is a Raw file containing NAEP score data comparable over time.
+
+About NAEP: 
+
+The National Assessment of Educational Progress (NAEP), also known as "the Nation's Report Card," is the only nationally representative and continuing assessment of what America's students know and can do in various subject areas. Since 1969, assessments have been conducted periodically in reading, mathematics, science, writing, U.S. history, civics, geography, and the arts.
+
+```{r}
+# Data downloaded from https://apps.urban.org/features/naep/data/NAEP_fulldata.xlsx
+NAEP_PATH <- here::here('9-15-2020','Additional_Data','NAEP_fulldata.xlsx')
+NAEP_overtime <- readxl::read_excel(NAEP_PATH,sheet="NAEP_overtime")
+```
+
+```{r}
+states <- data.frame("state" = state.name,"region" = state.region) %>% 
+              rbind(data.frame("state"="District of Columbia",region="South"))
+```
+
+
+## Analysis of kids.csv
+
+```{r message=FALSE, warning=FALSE}
+inf_adj_year_sum <- kids %>% 
+  left_join(states,by="state")%>%
+  filter(variable=="PK12ed") %>% 
+  group_by(year) %>% 
+  summarize(
+    inf_adj_sum = sum(inf_adj)
+  ) %>%
+  spread(year,inf_adj_sum)%>% 
+  mutate(growth_rate = (`2016`-`1997`)/`1997`) %>% 
+  select(growth_rate)
+  
+inf_adj_year_sum 
+```
+
+```{r message=FALSE, warning=FALSE}
+inf_adj_year_sum <- kids %>% 
+  left_join(states,by="state")%>%
+  filter(variable=="PK12ed") %>% 
+  group_by(region,year) %>% 
+  summarize(
+    inf_adj_sum = sum(inf_adj)
+  ) %>%
+  spread(year,inf_adj_sum)%>% 
+  group_by(region) %>%
+  mutate(growth_rate = (`2016`-`1997`)/`1997`) %>% 
+  select(region,growth_rate)
+  
+inf_adj_year_sum 
+```
+
+
+
+```{r}
+PK12ed <- kids %>% left_join(states,by="state") %>%
+                   filter(variable=="PK12ed") 
+PK12ed
+```
+
+```{r fig.height=6, fig.width=7}
+annotation_text <- data.frame(year = c(2013,2013,2013),
+                              inf_adj_perchild = c(16,13,9),
+                              state = c("District of Columbia","Alaska","Wyoming"), 
+                              region = factor(c("South","West","West"),
+                                              levels = c("Northeast","South",
+                                                         "North Central","West")))
+region.labs <- c("Northeast (60% Growth*)",
+                 "South (55% Growth*)",
+                 "North Central (32% Growth*)",
+                 "West (63% Growth*)")
+names(region.labs) <- c("Northeast","South","North Central","West")
+
+custom_y_labels <- function(x) {paste0("$",x,"k")}
+ggplot(
+  data = PK12ed,
+  aes(x=year,y=inf_adj_perchild,color=state)
+) + geom_line() + 
+  facet_wrap(~region,
+             labeller = labeller(region = region.labs)) + 
+  scale_y_continuous(labels=custom_y_labels)+
+  theme_bw()+
+  theme(legend.position = "none") + 
+  
+  geom_text(data = annotation_text,label = c("District of Columbia","Alaska","Wyoming"),
+            size=3) + 
+  ylab("Inflation Adjusted Spending\nper Child on K-12 Education")+
+  xlab("Year")+
+  labs(title="",
+       subtitle="Total US Spending on K-12 Education adjusted for inflation\nhas grown 52% from 1997 to 2016",
+       color = "",
+       caption="*in Total Inflation Adjusted Spending\nSource : Urban Institute | Analysis: @The_DataViz"
+       ) 
+```
+
+## Analysis of NAEP_overtime
+
+## Analysis of joined datasets 
+
+
+
