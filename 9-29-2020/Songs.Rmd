@@ -1,0 +1,299 @@
+---
+title: "Beyance and Taylor Swift"
+author: "Hunter Kempf"
+date: "9/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Music to my Ears: An analysis of Taylor Swift and Beyance Albums
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(ggwordcloud)
+library(tidytext)
+```
+
+Disclaimer: 
+I found some issues in the sales and charts csv files. Namely both were missing Beyonce's Lemonade album. It appears to be an error in the wikipedia parsing script featured on the [github repo](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-09-29/readme.md) as of Sept 28, 2020 
+
+
+```{r}
+beyonce_lyrics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/beyonce_lyrics.csv')
+taylor_swift_lyrics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/taylor_swift_lyrics.csv')
+sales <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/sales.csv')
+charts <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/charts.csv')
+```
+
+```{r}
+# used regex101 to build a pattern that worked to extract out the dates
+sales <- sales %>% mutate(released_date = mdy(sub("^([A-z]* [0-9]*, [0-9]*).*", "\\1", released)))
+ggplot(
+  data = sales %>% filter(country %in% c("WW","World")),
+  aes(x= released_date,y = sales/1e6, color=artist)
+) + geom_line() + 
+  geom_point() + 
+  ylab("Sales in Millions of Copies") + 
+  xlab("Album Release Date") +
+  labs(title="Music to my Ears",
+       subtitle="",
+       color = "Artist",
+       caption="Source :  | Analysis: @The_DataViz"
+       ) + 
+  theme_bw() + 
+  theme(plot.title = element_text(face="bold"))
+```
+
+## Taylor Swift Lyrics Analysis
+
+### Attempting to use ggwordcloud or wordcloud2 but neither work for me
+
+```{r}
+set.seed(42)
+ggplot(love_words_small, aes(label = word, size = speakers)) +
+  geom_text_wordcloud_area(
+    mask = png::readPNG(system.file("extdata/hearth.png",
+      package = "ggwordcloud", mustWork = TRUE
+    )),
+    rm_outside = TRUE
+  ) +
+  scale_size_area(max_size = 40) +
+  theme_minimal()
+```
+
+```{r}
+library(wordcloud2) 
+ 
+letterCloud( demoFreq, word = "R", color='random-light' , backgroundColor="black")
+
+```
+
+```{r}
+taylor_swift_lyrics 
+```
+
+```{r message=FALSE, warning=FALSE}
+title_in_song <- taylor_swift_lyrics %>% 
+  mutate(Title2 = Title) %>%
+  unnest_tokens(word,Title2) %>%
+  group_by(Title) %>%
+  summarize(title_word_length=n()) %>% 
+  group_by(title_word_length) %>%
+  summarize(count=n())
+title_in_song
+```
+
+```{r}
+word <- taylor_swift_lyrics %>% 
+  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
+  unnest_tokens(word, Lyrics) %>% 
+  group_by(Title,word) %>% 
+  count() %>% 
+  filter(tolower(Title)==word) %>%
+  arrange(desc(n)) 
+word
+```
+
+```{r}
+bigram <- taylor_swift_lyrics %>% 
+  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
+  unnest_tokens(bigram, Lyrics, token = "ngrams", n = 2) %>% 
+  group_by(Title,bigram) %>% 
+  count() %>% 
+  filter(tolower(Title)==bigram) %>%
+  arrange(desc(n)) 
+bigram
+```
+
+```{r}
+trigram <- taylor_swift_lyrics %>% 
+  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
+  unnest_tokens(trigram, Lyrics, token = "ngrams", n = 3) %>% 
+  group_by(Title,trigram) %>% 
+  count() %>% 
+  filter(tolower(Title)==trigram) %>%
+  arrange(desc(n)) 
+trigram
+```
+
+```{r}
+quadgram <- taylor_swift_lyrics %>% 
+  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
+  unnest_tokens(quadgram, Lyrics, token = "ngrams", n = 4) %>% 
+  group_by(Title,quadgram) %>% 
+  count() %>% 
+  filter(tolower(Title)==quadgram) %>%
+  arrange(desc(n)) 
+quadgram
+```
+
+```{r}
+fivegram <- taylor_swift_lyrics %>% 
+  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
+  unnest_tokens(fivegram, Lyrics, token = "ngrams", n = 5) %>% 
+  group_by(Title,fivegram) %>% 
+  count() %>% 
+  filter(tolower(Title)==fivegram) %>%
+  arrange(desc(n)) 
+fivegram
+```
+
+```{r}
+sixgram <- taylor_swift_lyrics %>% 
+  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
+  unnest_tokens(sixgram, Lyrics, token = "ngrams", n = 6) %>% 
+  group_by(Title,sixgram) %>% 
+  count() %>% 
+  filter(tolower(Title)==sixgram) %>%
+  arrange(desc(n)) 
+sixgram
+```
+
+```{r}
+sevengram <- taylor_swift_lyrics %>% 
+  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
+  unnest_tokens(sevengram, Lyrics, token = "ngrams", n = 7) %>% 
+  group_by(Title,sevengram) %>% 
+  count() %>% 
+  filter(tolower(Title)==sevengram) %>%
+  arrange(desc(n)) 
+sevengram
+```
+
+```{r}
+eightgram <- taylor_swift_lyrics %>% 
+  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
+  unnest_tokens(eightgram, Lyrics, token = "ngrams", n = 8) %>% 
+  group_by(Title,eightgram) %>% 
+  count() %>% 
+  filter(tolower(Title)==eightgram) %>%
+  arrange(desc(n)) 
+eightgram
+```
+
+```{r}
+title_in_song_count <- c(length(word$word),
+  length(bigram$bigram),
+  length(trigram$trigram),
+  length(quadgram$quadgram),
+  length(fivegram$fivegram),
+  length(sixgram$sixgram),
+  length(sevengram$sevengram),
+  length(eightgram$eightgram))
+
+title_in_song_plot <- title_in_song %>% 
+  mutate(title_in_song_count = title_in_song_count,
+         title_not_in_song = count-title_in_song_count) %>%
+  select(title_word_length,title_in_song_count,title_not_in_song) %>%
+  gather(key = "variable",value="count",-title_word_length)
+title_in_song_plot
+```
+
+```{r}
+ggplot(
+  data = title_in_song_plot,
+  aes(x= title_word_length,y=count,fill=variable)
+) + geom_col(position="fill") + 
+  ylab("% of Songs")
+```
+
+# Colors in Taylor Swift songs 
+
+```{r}
+color_counts <- taylor_swift_lyrics %>% 
+  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
+  unnest_tokens(word, Lyrics) %>% 
+  mutate(word = str_replace(word,"grey","gray"))%>%
+  group_by(Album,Title,word) %>% 
+  count()%>% 
+  mutate(is_color = word %in% colors()) %>%
+  filter(is_color==T) %>%
+  select(Album,Title,Color=word,n)%>%
+  arrange(desc(n))
+color_counts
+```
+
+```{r message=FALSE, warning=FALSE}
+color_counts_Total <- color_counts %>% 
+  group_by(Color) %>%
+  summarize(count=sum(n)) %>%
+  arrange(desc(count))
+color_counts_Total
+```
+
+```{r}
+border <- rep("white",12) 
+border[c(4,11)] <- "black"
+ggplot(
+  data = color_counts_Total,
+  aes(x = reorder(Color, desc(count)), y = count)
+) + geom_col(fill = reorder(color_counts_Total$Color, 
+                            desc(color_counts_Total$count)),
+             color = border) +
+  xlab("") + 
+  ylab("Total Count") + 
+  labs(title="Music to my Ears",
+       subtitle="Colors Used in 132 Taylor Swift Songs",
+       caption="Source :  | Analysis: @The_DataViz"
+       ) +
+  theme_bw()+ 
+  theme(plot.title = element_text(face="bold"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+# Colors in Beyance songs 
+
+```{r}
+color_counts <- beyonce_lyrics %>% 
+  #mutate(Lyrics = str_replace_all(line,"\n","")) %>% 
+  unnest_tokens(word, line) %>% 
+  #mutate(word = str_replace(word,"grey","gray"))%>%
+  group_by(song_name,word) %>% 
+  count()%>% 
+  mutate(is_color = word %in% colors()) %>%
+  filter(is_color==T) %>%
+  select(song_name,Color=word,n)%>%
+  arrange(desc(n))
+color_counts
+```
+
+```{r message=FALSE, warning=FALSE}
+color_counts_Total <- color_counts %>% 
+  group_by(Color) %>%
+  summarize(count=sum(n)) %>%
+  arrange(desc(count))
+color_counts_Total
+```
+
+```{r}
+beyonce_lyrics %>% select(song_id) %>% unique() %>% nrow()
+```
+
+
+```{r}
+border <- rep("white",15) 
+border[6] <- "black"
+ggplot(
+  data = color_counts_Total,
+  aes(x = reorder(Color, desc(count)), y = count)
+) + geom_col(fill = reorder(color_counts_Total$Color, 
+                            desc(color_counts_Total$count)),
+             color = border) +
+  xlab("") + 
+  ylab("Total Count") + 
+  labs(title="Music to my Ears",
+       subtitle="Colors Used in 390 Beyance Songs",
+       caption="Source :  | Analysis: @The_DataViz"
+       ) +
+  theme_bw()+ 
+  theme(plot.title = element_text(face="bold"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
