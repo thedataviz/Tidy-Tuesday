@@ -15,6 +15,8 @@ library(tidyverse)
 library(here)
 ```
 
+# Children are Our Future: An Analysis of US Education Spending and Scores
+
 ## Read Datasets 
 First lets download the Kids.csv from tidy tuesday's github this is clean data so we dont have to do anything to it.
 ```{r}
@@ -41,6 +43,7 @@ states <- data.frame("state" = state.name,"region" = state.region) %>%
 
 ## Analysis of kids.csv
 
+### PK12ed exploration 
 ```{r message=FALSE, warning=FALSE}
 inf_adj_year_sum <- kids %>% 
   left_join(states,by="state")%>%
@@ -73,7 +76,6 @@ inf_adj_year_sum
 ```
 
 
-
 ```{r}
 PK12ed <- kids %>% left_join(states,by="state") %>%
                    filter(variable=="PK12ed") 
@@ -103,19 +105,141 @@ ggplot(
   scale_y_continuous(labels=custom_y_labels)+
   theme_bw()+
   theme(legend.position = "none") + 
-  
+  theme(plot.title = element_text(face="bold"))+
   geom_text(data = annotation_text,label = c("District of Columbia","Alaska","Wyoming"),
             size=3) + 
   ylab("Inflation Adjusted Spending\nper Child on K-12 Education")+
   xlab("Year")+
-  labs(title="",
+  labs(title="Children are Our Future",
        subtitle="Total US Spending on K-12 Education adjusted for inflation\nhas grown 52% from 1997 to 2016",
        color = "",
        caption="*in Total Inflation Adjusted Spending\nSource : Urban Institute | Analysis: @The_DataViz"
        ) 
 ```
 
+### Highered exploration
+
+```{r message=FALSE, warning=FALSE}
+inf_adj_year_sum <- kids %>% 
+  left_join(states,by="state")%>%
+  filter(variable=="highered") %>% 
+  group_by(year) %>% 
+  summarize(
+    inf_adj_sum = sum(inf_adj)
+  ) %>%
+  spread(year,inf_adj_sum)%>% 
+  mutate(growth_rate = (`2016`-`1997`)/`1997`) %>% 
+  select(growth_rate)
+  
+inf_adj_year_sum 
+```
+
+```{r message=FALSE, warning=FALSE}
+inf_adj_year_sum <- kids %>% 
+  left_join(states,by="state")%>%
+  filter(variable=="highered") %>% 
+  group_by(region,year) %>% 
+  summarize(
+    inf_adj_sum = sum(inf_adj)
+  ) %>%
+  spread(year,inf_adj_sum)%>% 
+  group_by(region) %>%
+  mutate(growth_rate = (`2016`-`1997`)/`1997`) %>% 
+  select(region,growth_rate)
+  
+inf_adj_year_sum 
+```
+
+```{r}
+highered <- kids %>% left_join(states,by="state") %>%
+                   filter(variable=="highered") 
+highered
+```
+
+```{r fig.height=6, fig.width=7}
+annotation_text <- data.frame(year = c(2013,2013,2013),
+                              inf_adj_perchild = c(16,13,9),
+                              state = c("District of Columbia","Alaska","Wyoming"), 
+                              region = factor(c("South","West","West"),
+                                              levels = c("Northeast","South",
+                                                         "North Central","West")))
+region.labs <- c("Northeast (75% Growth*)",
+                 "South (99% Growth*)",
+                 "North Central (62% Growth*)",
+                 "West (132% Growth*)")
+names(region.labs) <- c("Northeast","South","North Central","West")
+
+custom_y_labels <- function(x) {paste0("$",x,"k")}
+ggplot(
+  data = highered,
+  aes(x=year,y=inf_adj_perchild,color=state)
+) + geom_line() + 
+  facet_wrap(~region,
+             labeller = labeller(region = region.labs)) + 
+  scale_y_continuous(labels=custom_y_labels)+
+  theme_bw()+
+  theme(legend.position = "none") + 
+  theme(plot.title = element_text(face="bold"))+
+  ylab("Inflation Adjusted Spending\nper Child on Higher Education")+
+  xlab("Year")+
+  labs(title="Children are Our Future",
+       subtitle="Total US Spending on Higher Education adjusted for inflation\nhas grown 95% from 1997 to 2016",
+       color = "",
+       caption="*in Total Inflation Adjusted Spending\nSource : Urban Institute | Analysis: @The_DataViz"
+       ) 
+```
+
 ## Analysis of NAEP_overtime
+
+```{r message=FALSE, warning=FALSE}
+avg_scores <- NAEP_overtime %>% 
+                  group_by(year,grade,subject) %>% 
+                  summarize(
+                    mean_unadj_score = mean(unadj_score)
+                  ) %>%
+  spread(year,mean_unadj_score)%>% 
+  mutate(growth_rate_math = (`2019`-`1996`)/`1996`,
+         growth_rate_reading = (`2019`-`1998`)/`1998`,
+         growth_rate = ifelse(is.na(growth_rate_math),growth_rate_reading,growth_rate_math)) %>%
+  select(-c(growth_rate_math,growth_rate_reading))
+
+avg_scores
+```
+
+```{r message=FALSE, warning=FALSE}
+avg_scores %>% group_by(subject) %>% summarize(growth_rate = mean(growth_rate))
+```
+
+
+Trying to incorporate the USA flag colors (Old Glory Red: #b31942, Old Glory Blue: #0a3161 and White)
+```{r}
+NAEP_plot_data <- NAEP_overtime %>% 
+                    mutate(subject = str_replace(subject, "mathematics", "Mathematics")) %>%
+                    mutate(subject = str_replace(subject, "reading", "Reading")) 
+ggplot() + 
+  geom_line(
+    data = NAEP_plot_data,
+    aes(x=year,y=unadj_score,group=state),color="#b31942",alpha=.25
+  ) + 
+  facet_wrap(~subject + grade,labeller = label_wrap_gen(multi_line=FALSE)) +
+  theme_bw() + 
+  theme(panel.spacing = unit(2, "lines"))+
+```
+
+
+```{r}
+theme(strip.text = element_text(colour = '#0a3161',face="bold"),
+        strip.background = element_rect(fill="white")) + 
+  theme(plot.title = element_text(face="bold"))+
+  ylab("Test Score")+
+  xlab("Year")+
+  labs(title="Children are Our Future",
+       subtitle="From 1996 to 2019 Average Math Scores grew 5.4%\nFrom 1998 to 2019 Average Reading Scores grew 1.1%",
+       color = "",
+       caption="Source : National Assesment of Educational Progress | Analysis: @The_DataViz"
+       ) 
+```
+
 
 ## Analysis of joined datasets 
 
