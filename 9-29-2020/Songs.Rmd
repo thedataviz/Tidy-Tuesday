@@ -1,6 +1,6 @@
 ---
 title: "Beyance and Taylor Swift"
-author: "Hunter Kempf"
+author: "The DataViz"
 date: "9/28/2020"
 output: html_document
 ---
@@ -42,7 +42,7 @@ ggplot(
   labs(title="Music to my Ears",
        subtitle="",
        color = "Artist",
-       caption="Source :  | Analysis: @The_DataViz"
+       caption="Source: Rosie Baillie and Dr. Sara Stoudt via #TidyTuesday| Analysis: @The_DataViz"
        ) + 
   theme_bw() + 
   theme(plot.title = element_text(face="bold"))
@@ -73,8 +73,10 @@ letterCloud( demoFreq, word = "R", color='random-light' , backgroundColor="black
 ```
 
 ```{r}
-taylor_swift_lyrics 
+taylor_swift_lyrics
 ```
+
+### Tswift Song Title in Lyrics
 
 ```{r message=FALSE, warning=FALSE}
 title_in_song <- taylor_swift_lyrics %>% 
@@ -88,117 +90,211 @@ title_in_song
 ```
 
 ```{r}
-word <- taylor_swift_lyrics %>% 
-  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
-  unnest_tokens(word, Lyrics) %>% 
-  group_by(Title,word) %>% 
-  count() %>% 
-  filter(tolower(Title)==word) %>%
-  arrange(desc(n)) 
-word
+tswift_lyrics_title_match <- function(title_lengths){
+  print(paste("Initiating with:",title_lengths[1]))
+  current_df <- taylor_swift_lyrics %>% 
+                mutate(Lyrics = str_replace_all(Lyrics,"\n"," ")) %>% 
+                unnest_tokens(words, Lyrics, token = "ngrams", n = title_lengths[1]) %>% 
+                group_by(Title,words) %>% 
+                count() %>% 
+                mutate(title_word_length=title_lengths[1]) %>%
+                filter(tolower(Title)==words) %>%
+                arrange(desc(n)) 
+    
+  for (title_length in title_lengths[2:length(title_lengths)]) {
+    print(paste("Looping for:",title_length))
+    loop_df <- taylor_swift_lyrics %>% 
+                mutate(Lyrics = str_replace_all(Lyrics,"\n"," ")) %>% 
+                unnest_tokens(words, Lyrics, token = "ngrams", n = title_lengths[title_length]) %>% 
+                group_by(Title,words) %>% 
+                count() %>% 
+                mutate(title_word_length=title_lengths[title_length]) %>%
+                filter(tolower(Title)==words) %>%
+                arrange(desc(n)) 
+    current_df <- rbind(current_df,loop_df)
+  }
+  return(current_df)
+}
+lyric_in_tswift_song <- tswift_lyrics_title_match(title_in_song$title_word_length)
+lyric_in_tswift_song %>% arrange(desc(n))
 ```
 
 ```{r}
-bigram <- taylor_swift_lyrics %>% 
-  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
-  unnest_tokens(bigram, Lyrics, token = "ngrams", n = 2) %>% 
-  group_by(Title,bigram) %>% 
-  count() %>% 
-  filter(tolower(Title)==bigram) %>%
-  arrange(desc(n)) 
-bigram
+title_in_song_count <- lyric_in_tswift_song %>%group_by(title_word_length) %>% count() %>% select(title_word_length,count_title_matches=n)
+title_in_song_count
 ```
 
-```{r}
-trigram <- taylor_swift_lyrics %>% 
-  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
-  unnest_tokens(trigram, Lyrics, token = "ngrams", n = 3) %>% 
-  group_by(Title,trigram) %>% 
-  count() %>% 
-  filter(tolower(Title)==trigram) %>%
-  arrange(desc(n)) 
-trigram
-```
 
 ```{r}
-quadgram <- taylor_swift_lyrics %>% 
-  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
-  unnest_tokens(quadgram, Lyrics, token = "ngrams", n = 4) %>% 
-  group_by(Title,quadgram) %>% 
-  count() %>% 
-  filter(tolower(Title)==quadgram) %>%
-  arrange(desc(n)) 
-quadgram
-```
-
-```{r}
-fivegram <- taylor_swift_lyrics %>% 
-  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
-  unnest_tokens(fivegram, Lyrics, token = "ngrams", n = 5) %>% 
-  group_by(Title,fivegram) %>% 
-  count() %>% 
-  filter(tolower(Title)==fivegram) %>%
-  arrange(desc(n)) 
-fivegram
-```
-
-```{r}
-sixgram <- taylor_swift_lyrics %>% 
-  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
-  unnest_tokens(sixgram, Lyrics, token = "ngrams", n = 6) %>% 
-  group_by(Title,sixgram) %>% 
-  count() %>% 
-  filter(tolower(Title)==sixgram) %>%
-  arrange(desc(n)) 
-sixgram
-```
-
-```{r}
-sevengram <- taylor_swift_lyrics %>% 
-  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
-  unnest_tokens(sevengram, Lyrics, token = "ngrams", n = 7) %>% 
-  group_by(Title,sevengram) %>% 
-  count() %>% 
-  filter(tolower(Title)==sevengram) %>%
-  arrange(desc(n)) 
-sevengram
-```
-
-```{r}
-eightgram <- taylor_swift_lyrics %>% 
-  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
-  unnest_tokens(eightgram, Lyrics, token = "ngrams", n = 8) %>% 
-  group_by(Title,eightgram) %>% 
-  count() %>% 
-  filter(tolower(Title)==eightgram) %>%
-  arrange(desc(n)) 
-eightgram
-```
-
-```{r}
-title_in_song_count <- c(length(word$word),
-  length(bigram$bigram),
-  length(trigram$trigram),
-  length(quadgram$quadgram),
-  length(fivegram$fivegram),
-  length(sixgram$sixgram),
-  length(sevengram$sevengram),
-  length(eightgram$eightgram))
-
 title_in_song_plot <- title_in_song %>% 
-  mutate(title_in_song_count = title_in_song_count,
-         title_not_in_song = count-title_in_song_count) %>%
-  select(title_word_length,title_in_song_count,title_not_in_song) %>%
+  left_join(title_in_song_count,by="title_word_length") %>%
+  mutate(count_title_matches = ifelse(is.na(count_title_matches),0,count_title_matches),
+         True = count_title_matches,
+         False = count-count_title_matches) %>%
+  select(title_word_length,True,False) %>%
   gather(key = "variable",value="count",-title_word_length)
 title_in_song_plot
 ```
+```{r message=FALSE, warning=FALSE}
+title_in_song_plot %>% 
+  group_by(variable) %>% 
+  summarize(total = sum(count)) %>% 
+  spread(variable,total)%>%
+  mutate(perc = True/(True+False)) %>%
+  pull(perc)
+```
 
-```{r}
+
+```{r fig.height=4.05, fig.width=6.55, message=FALSE, warning=FALSE}
 ggplot(
   data = title_in_song_plot,
   aes(x= title_word_length,y=count,fill=variable)
 ) + geom_col(position="fill") + 
-  ylab("% of Songs")
+  ylab("% of Songs")+ 
+  xlab("Word Count of Song Title") + 
+  labs(title="Music to my Ears",
+       fill="Title in Lyrics",
+       subtitle="Taylor uses exact Lyrics as a Song Title 89% of the time",
+       caption="Source: Rosie Baillie and Dr. Sara Stoudt via #TidyTuesday | Analysis: @The_DataViz"
+       ) +
+  theme_bw()+ 
+  theme(plot.title = element_text(face="bold"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+ggsave("tswift_titles.png")
+```
+
+### Beyonce Song Title in Lyrics
+
+As you can see the Beyonce Song titles are way more messy 
+
+```{r}
+beyonce_lyrics$song_name%>% unique()
+```
+
+In an effort to clean them up I will get rid of all text inside a () or [] which mostly ends up being featured artists, remixes etc this will help but stuff wont be perfect
+
+```{r}
+first<- sub("\\(.*\\)","",beyonce_lyrics$song_name%>% unique())
+second <- sub("\\[.*\\]","",first%>% unique()) %>% str_trim()
+second
+```
+
+
+```{r message=FALSE, warning=FALSE}
+clean_title <- data.frame(song_name = beyonce_lyrics$song_name %>% unique())%>%
+  mutate(mid =  sub("\\(.*\\)","",song_name),
+         cleaner_title = str_trim(sub("\\[.*\\]","",mid))) 
+unique_title <- data.frame(song_name =clean_title$cleaner_title %>% unique())
+title_in_song <- unique_title %>%
+  mutate(group = song_name) %>%
+  unnest_tokens(word,group) %>%
+  group_by(song_name) %>%
+  summarize(title_word_length=n()) %>% 
+  group_by(title_word_length) %>%
+  summarize(count=n()) 
+title_in_song
+```
+```{r}
+beyonce_cleaner_lyrics$Title %>% unique() %>% length()
+```
+
+
+```{r}
+beyonce_cleaner_lyrics %>%
+  group_by(Title) %>% slice(which.max(nchar(as.character(Lyrics))))
+```
+
+```{r message=FALSE, warning=FALSE}
+beyonce_cleaner_lyrics <- beyonce_lyrics %>% 
+    group_by(song_id,song_name) %>% 
+    summarize(Lyrics = paste0(line, collapse = " ")) %>% 
+    mutate(mid =  sub("\\(.*\\)","",song_name),
+         Title = str_trim(sub("\\[.*\\]","",mid))) %>%
+  ungroup()%>%
+  select(-c(song_id,mid)) %>% 
+  group_by(Title) %>%
+  slice(which.max(nchar(as.character(Lyrics)))) %>%
+    select(Title,Lyrics)
+```
+
+
+```{r}
+beyonce_lyrics_title_match <- function(title_lengths){
+  print(paste("Initiating with:",title_lengths[1]))
+  current_df <- beyonce_cleaner_lyrics %>% 
+                mutate(Lyrics = str_replace_all(Lyrics,"\n"," ")) %>% 
+                unnest_tokens(words, Lyrics, token = "ngrams", n = title_lengths[1]) %>% 
+                group_by(Title,words) %>% 
+                count() %>% 
+                mutate(title_word_length=title_lengths[1]) %>%
+                filter(tolower(Title)==words) %>%
+                arrange(desc(n)) 
+    
+  for (title_length in title_lengths[2:length(title_lengths)]) {
+    print(paste("Looping for:",title_length))
+    loop_df <- beyonce_cleaner_lyrics %>% 
+                mutate(Lyrics = str_replace_all(Lyrics,"\n"," ")) %>% 
+                unnest_tokens(words, Lyrics, token = "ngrams", n = title_lengths[title_length]) %>% 
+                group_by(Title,words) %>% 
+                count() %>% 
+                mutate(title_word_length=title_lengths[title_length]) %>%
+                filter(tolower(Title)==words) %>%
+                arrange(desc(n)) 
+    current_df <- rbind(current_df,loop_df)
+  }
+  return(current_df)
+}
+lyric_in_beyonce_song <- beyonce_lyrics_title_match(title_in_song$title_word_length) %>% select(-words)
+lyric_in_beyonce_song %>% arrange(desc(n))
+```
+
+```{r}
+title_in_song_count <- lyric_in_beyonce_song %>%group_by(title_word_length) %>% count() %>% select(title_word_length,count_title_matches=n)
+title_in_song_count
+```
+
+
+```{r}
+title_in_song_plot <- title_in_song %>% 
+  left_join(title_in_song_count,by="title_word_length") %>%
+  mutate(count_title_matches = ifelse(is.na(count_title_matches),0,count_title_matches),
+         True = count_title_matches,
+         False = count-count_title_matches) %>%
+  select(title_word_length,True,False) %>%
+  gather(key = "variable",value="count",-title_word_length)
+title_in_song_plot
+```
+
+```{r message=FALSE, warning=FALSE}
+title_in_song_plot %>% 
+  group_by(variable) %>% 
+  summarize(total = sum(count)) %>% 
+  spread(variable,total)%>%
+  mutate(perc = True/(True+False)) %>%
+  pull(perc)
+```
+
+
+```{r fig.height=4.05, fig.width=6.55, message=FALSE, warning=FALSE}
+ggplot(
+  data = title_in_song_plot,
+  aes(x= title_word_length,y=count,fill=variable)
+) + geom_col(position="fill") + 
+  ylab("% of Songs")+ 
+  xlab("Word Count of Song Title") + 
+  labs(title="Music to my Ears",
+       fill="Title in Lyrics",
+       subtitle="Beyonce uses exact Lyrics as a Song Title 64% of the time",
+       caption="Source: Rosie Baillie and Dr. Sara Stoudt via #TidyTuesday | Analysis: @The_DataViz"
+       ) +
+  theme_bw()+ 
+  theme(plot.title = element_text(face="bold"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+ggsave("beyonce_titles.png")
 ```
 
 # Colors in Taylor Swift songs 
@@ -225,7 +321,7 @@ color_counts_Total <- color_counts %>%
 color_counts_Total
 ```
 
-```{r}
+```{r fig.height=4.05, fig.width=6.55, message=FALSE, warning=FALSE}
 border <- rep("white",12) 
 border[c(4,11)] <- "black"
 ggplot(
@@ -238,13 +334,14 @@ ggplot(
   ylab("Total Count") + 
   labs(title="Music to my Ears",
        subtitle="Colors Used in 132 Taylor Swift Songs",
-       caption="Source :  | Analysis: @The_DataViz"
+       caption="Source: Rosie Baillie and Dr. Sara Stoudt via #TidyTuesday | Analysis: @The_DataViz"
        ) +
   theme_bw()+ 
   theme(plot.title = element_text(face="bold"),
         panel.border = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
+ggsave("tswift_colors.png")
 ```
 
 # Colors in Beyance songs 
@@ -276,7 +373,7 @@ beyonce_lyrics %>% select(song_id) %>% unique() %>% nrow()
 ```
 
 
-```{r}
+```{r fig.height=4.05, fig.width=6.55, message=FALSE, warning=FALSE}
 border <- rep("white",15) 
 border[6] <- "black"
 ggplot(
@@ -289,11 +386,12 @@ ggplot(
   ylab("Total Count") + 
   labs(title="Music to my Ears",
        subtitle="Colors Used in 390 Beyance Songs",
-       caption="Source :  | Analysis: @The_DataViz"
+       caption="Source: Rosie Baillie and Dr. Sara Stoudt via #TidyTuesday | Analysis: @The_DataViz"
        ) +
   theme_bw()+ 
   theme(plot.title = element_text(face="bold"),
         panel.border = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
+ggsave("beyance_colors.png")
 ```
