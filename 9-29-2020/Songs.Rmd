@@ -18,15 +18,15 @@ library(ggwordcloud)
 library(tidytext)
 ```
 
-Disclaimer: 
-I found some issues in the sales and charts csv files. Namely both were missing Beyonce's Lemonade album. It appears to be an error in the wikipedia parsing script featured on the [github repo](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-09-29/readme.md) as of Sept 28, 2020 
-
 
 ```{r}
 beyonce_lyrics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/beyonce_lyrics.csv')
 taylor_swift_lyrics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/taylor_swift_lyrics.csv')
 sales <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/sales.csv')
 charts <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/charts.csv')
+## Google Trends YouTube Search data: https://trends.google.com/trends/explore?date=all_2008&geo=US&gprop=youtube&q=%2Fm%2F0dl567,%2Fm%2F01mpq7s
+timeline <- readr::read_csv("multiTimeline.csv",skip=2)
+state_results <- readr::read_csv("geoMap.csv",skip=2)
 ```
 
 ```{r}
@@ -196,16 +196,8 @@ title_in_song <- unique_title %>%
   summarize(count=n()) 
 title_in_song
 ```
-```{r}
-beyonce_cleaner_lyrics$Title %>% unique() %>% length()
-```
 
-
-```{r}
-beyonce_cleaner_lyrics %>%
-  group_by(Title) %>% slice(which.max(nchar(as.character(Lyrics))))
-```
-
+Clean up format into one song per row similar to the tswift format also remove any data in () or [] most of which are features or remix titles. 
 ```{r message=FALSE, warning=FALSE}
 beyonce_cleaner_lyrics <- beyonce_lyrics %>% 
     group_by(song_id,song_name) %>% 
@@ -219,6 +211,9 @@ beyonce_cleaner_lyrics <- beyonce_lyrics %>%
     select(Title,Lyrics)
 ```
 
+```{r}
+beyonce_cleaner_lyrics$Title %>% unique() %>% length()
+```
 
 ```{r}
 beyonce_lyrics_title_match <- function(title_lengths){
@@ -296,6 +291,11 @@ ggplot(
         panel.grid.minor = element_blank())
 ggsave("beyonce_titles.png")
 ```
+
+```{r}
+
+```
+
 
 # Colors in Taylor Swift songs 
 
@@ -395,3 +395,119 @@ ggplot(
         panel.grid.minor = element_blank())
 ggsave("beyance_colors.png")
 ```
+
+
+
+### Youtube search comparison from Google Trends
+
+```{r}
+
+```
+
+
+```{r fig.height=4, fig.width=9, message=FALSE, warning=FALSE}
+taylor_color = "#b31942"
+beyonce_color = "#0a3161"
+timeline <- timeline %>% mutate(Month_date = lubridate::parse_date_time(Month,"%Y-%m"))
+ggplot(
+  data=timeline,
+  aes(x=Month_date)
+) + geom_line(aes(y=`Taylor Swift: (United States)`),color=taylor_color,alpha=.7)+ 
+  geom_line(aes(y=`Beyoncé: (United States)`),color=beyonce_color,alpha=.7) + 
+  annotate(
+    geom = "curve", x = ISOdate(2007, 6, 1), y = 87, xend = ISOdate(2008, 11, 1), yend = 50, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=taylor_color
+  ) +
+  annotate(
+    geom = "curve", x = ISOdate(2008, 5, 1), y = 92, xend = ISOdate(2009, 8, 1), yend = 100, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=taylor_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2007, 1, 1), y = 90, size = 3,
+           label = "Fearless (re-release)", 
+           hjust = "left",color=taylor_color)+
+  annotate(
+    geom = "curve", x = ISOdate(2010, 11, 1), y = 62, xend = ISOdate(2010, 11, 1), yend = 50, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=taylor_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2010, 11, 1), y = 65, size = 3,
+           label = "Speak Now", 
+           hjust = "mid",color=taylor_color)+
+  annotate(
+    geom = "curve", x = ISOdate(2012, 11, 1), y = 92, xend = ISOdate(2012, 10, 1), yend = 80, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=taylor_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2012, 11, 1), y = 95, size = 3,
+           label = "Red", 
+           hjust = "mid",color=taylor_color)+
+  annotate(
+    geom = "curve", x = ISOdate(2014, 12, 1), y = 92, xend = ISOdate(2014, 11, 1), yend = 83, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=taylor_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2014, 12, 1), y = 95, size = 3,
+           label = "1989", 
+           hjust = "mid",color=taylor_color)+
+  annotate(
+    geom = "curve", x = ISOdate(2017, 11, 1), y = 32, xend = ISOdate(2017, 11, 1), yend = 17, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=taylor_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2017, 11, 1), y = 35, size = 3,
+           label = "Reputation", 
+           hjust = "mid",color=taylor_color)+
+  annotate(
+    geom = "curve", x = ISOdate(2019, 9, 1), y = 22, xend = ISOdate(2019, 8, 1), yend = 13, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=taylor_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2019, 9, 1), y = 25, size = 3,
+           label = "Lover", 
+           hjust = "mid",color=taylor_color)+
+  annotate(
+    geom = "curve", x = ISOdate(2020, 7, 1), y = 22, xend = ISOdate(2020, 7, 1), yend = 9, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=taylor_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2020, 7, 1), y = 25, size = 3,
+           label = "Folklore", 
+           hjust = "mid",color=taylor_color)+
+  annotate(
+    geom = "curve", x = ISOdate(2007, 12, 1), y = 52, xend = ISOdate(2008, 10, 1), yend = 70, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=beyonce_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2006, 7, 1), y = 49, size = 3,
+           label = "I Am... Sasha Fierce", 
+           hjust = "left",color=beyonce_color)+
+  annotate(
+    geom = "curve", x = ISOdate(2011, 8, 1), y = 72, xend = ISOdate(2011, 7, 1), yend = 55, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=beyonce_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2011, 7, 1), y = 75, size = 4,
+           label = "4", 
+           hjust = "left",color=beyonce_color)+
+  annotate(
+    geom = "curve", x = ISOdate(2013, 12, 1), y = 72, xend = ISOdate(2013, 12, 1), yend = 58, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=beyonce_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2013, 12, 1), y = 75, size = 3,
+           label = "Beyoncé", 
+           hjust = "mid",color=beyonce_color)+
+  annotate(
+    geom = "curve", x = ISOdate(2016, 5, 1), y = 52, xend = ISOdate(2016, 4, 15), yend = 31, 
+    curvature = .1, arrow = arrow(length = unit(2, "mm")),color=beyonce_color
+  ) +
+  annotate(geom = "text", x = ISOdate(2016, 5, 1), y = 55, size = 3,
+           label = "Lemonade", 
+           hjust = "mid",color=beyonce_color)+
+  ylab("Relative Popularity")+
+  xlab("")+ 
+  labs(title="Music to my Ears",
+       subtitle="Timeline of Youtube Relative Search History and Artist Album Releases (2008-2020)",
+       caption="Source: Rosie Baillie and Dr. Sara Stoudt via #TidyTuesday and Google Trends | Analysis: @The_DataViz"
+       ) +
+  theme_bw()+ 
+  theme(plot.title = element_text(face="bold"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+ggsave("Timeline.png")
+```	
+
+
+
