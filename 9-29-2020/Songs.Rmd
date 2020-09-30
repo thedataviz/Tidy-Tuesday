@@ -17,6 +17,7 @@ library(lubridate)
 library(ggwordcloud)
 library(tidytext)
 library(usmap)
+library(cowplot)
 ```
 
 
@@ -515,7 +516,7 @@ state_perc <- state_results %>% mutate(
   mutate(
     Artist = ifelse(`Taylor Swift`>`Beyoncé`,"Taylor Swift","Beyoncé"),
     Artist = factor(Artist,levels = c("Taylor Swift","Beyoncé")),
-    Value = ifelse(`Taylor Swift`>`Beyoncé`,`Taylor Swift`,`Beyoncé`)
+    Value = ifelse(`Taylor Swift`>`Beyoncé`,`Taylor Swift`,`Beyoncé`)/100
   )%>%
   select(state=Region,Artist,Value)
 state_perc
@@ -527,10 +528,68 @@ tswift_states <- state_perc %>% filter(Artist=="Taylor Swift")
 ```
 
 ```{r message=FALSE, warning=FALSE}
-plot_usmap(data = state_perc, values = "Value",color="grey") + 
+artist_map <- plot_usmap(data = state_perc, values = "Artist",color="grey") + 
   scale_fill_manual(
-    values = c(beyonce_color,taylor_color), name = "Artist"
-  ) + theme(legend.position = "right")
+    values = c(taylor_color,beyonce_color), name = "Artist"
+  ) + theme(legend.position = "right",legend.title.align=0.5)
+artist_map
 ```
 
+```{r message=FALSE, warning=FALSE}
+taylor_map <- plot_usmap(data = tswift_states, values = "Value", color = "grey",include = tswift_states$state) + 
+  scale_fill_continuous(
+    low = "#F0D1D9", high = taylor_color, name = "",
+    limits = c(.5,.75),
+    breaks = c(.50, .55, .60, .65, .70,.75),
+    label = scales::percent_format(accuracy = 1)) + 
+  theme(legend.position = "right",legend.title.align=0.5)
+taylor_map
+```
+
+```{r message=FALSE, warning=FALSE}
+beyonce_map <- plot_usmap(data = beyonce_states, values = "Value", color = "grey",include = beyonce_states$state) + 
+  scale_fill_continuous(
+    low = "#CED6DF", high = beyonce_color,name = "",
+    limits = c(.5,.75),
+    breaks = c(.50, .55, .60, .65, .70,.75),
+    label = scales::percent_format(accuracy = 1)) + 
+  theme(legend.position = "right",legend.title.align=0.5)
+beyonce_map
+```
+
+```{r message=FALSE, warning=FALSE}
+split<- plot_grid(taylor_map,beyonce_map, 
+          labels = c("", ""),
+          ncol = 2)
+combo <- plot_grid(artist_map,split, 
+          labels = c("", ""),
+          ncol = 1) + 
+  labs(title="Music to my Ears",
+       subtitle="More Popular Artist in Youtube Relative Search History (2008-2020)",
+       caption="Source: Google Trends | Analysis: @The_DataViz"
+       ) 
+combo
+```
+
+```{r}
+10*4.51/7.29
+```
+
+
+```{r fig.height=6.19, fig.width=10, message=FALSE, warning=FALSE}
+title_gg <- ggplot() + 
+  labs(title = "Music to my Ears", subtitle = "More Popular Artist in Youtube Relative Search History (2008-2020)") + 
+  theme_bw() + theme(plot.title = element_text(face="bold"),
+                     panel.border = element_blank(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+caption_gg <- ggplot() + 
+  labs(caption="Source: Google Trends | Analysis: @The_DataViz") + 
+  theme_bw() + 
+  theme(panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+plot_grid(title_gg, combo,caption_gg, ncol = 1, rel_heights = c(0.15, 1))
+ggsave("youtube_map.png")
+```
 
