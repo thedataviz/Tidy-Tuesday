@@ -16,6 +16,7 @@ library(tidyverse)
 library(lubridate)
 library(ggwordcloud)
 library(tidytext)
+library(usmap)
 ```
 
 
@@ -385,7 +386,7 @@ ggplot(
   xlab("") + 
   ylab("Total Count") + 
   labs(title="Music to my Ears",
-       subtitle="Colors Used in 390 Beyance Songs",
+       subtitle="Colors Used in 390 Beyoncé Songs",
        caption="Source: Rosie Baillie and Dr. Sara Stoudt via #TidyTuesday | Analysis: @The_DataViz"
        ) +
   theme_bw()+ 
@@ -393,17 +394,12 @@ ggplot(
         panel.border = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
-ggsave("beyance_colors.png")
+ggsave("beyonce_colors.png")
 ```
 
 
 
-### Youtube search comparison from Google Trends
-
-```{r}
-
-```
-
+### Youtube Search Artist Timeline from Google Trends
 
 ```{r fig.height=4, fig.width=9, message=FALSE, warning=FALSE}
 taylor_color = "#b31942"
@@ -509,5 +505,32 @@ ggplot(
 ggsave("Timeline.png")
 ```	
 
+### Youtube Search US Map
+
+```{r}
+state_perc <- state_results %>% mutate(
+  `Taylor Swift` = parse_number(`Taylor Swift: (1/1/08 - 9/30/20)`),
+  `Beyoncé` = parse_number(`Beyoncé: (1/1/08 - 9/30/20)`)
+) %>% 
+  mutate(
+    Artist = ifelse(`Taylor Swift`>`Beyoncé`,"Taylor Swift","Beyoncé"),
+    Artist = factor(Artist,levels = c("Taylor Swift","Beyoncé")),
+    Value = ifelse(`Taylor Swift`>`Beyoncé`,`Taylor Swift`,`Beyoncé`)
+  )%>%
+  select(state=Region,Artist,Value)
+state_perc
+```
+
+```{r}
+beyonce_states <- state_perc %>% filter(Artist=="Beyoncé")
+tswift_states <- state_perc %>% filter(Artist=="Taylor Swift")
+```
+
+```{r message=FALSE, warning=FALSE}
+plot_usmap(data = state_perc, values = "Value",color="grey") + 
+  scale_fill_manual(
+    values = c(beyonce_color,taylor_color), name = "Artist"
+  ) + theme(legend.position = "right")
+```
 
 
