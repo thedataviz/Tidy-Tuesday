@@ -303,7 +303,7 @@ ggsave("beyonce_titles.png")
 
 ```{r}
 color_counts <- taylor_swift_lyrics %>% 
-  mutate(Lyrics = str_replace_all(Lyrics,"\n","")) %>% 
+  mutate(Lyrics = str_replace_all(Lyrics,"\n"," ")) %>% 
   unnest_tokens(word, Lyrics) %>% 
   mutate(word = str_replace(word,"grey","gray"))%>%
   group_by(Album,Title,word) %>% 
@@ -314,6 +314,19 @@ color_counts <- taylor_swift_lyrics %>%
   arrange(desc(n))
 color_counts
 ```
+
+```{r}
+color_counts %>% ungroup() %>% group_by(Album,Title) %>% summarize(sum=sum(n)) %>% arrange(desc(sum))
+```
+
+```{r}
+color_counts %>% group_by(Title) %>% count() %>% arrange(desc(n))
+```
+
+```{r}
+color_counts %>% filter(Title=="invisible string") %>% pull(Color)
+```
+
 
 ```{r message=FALSE, warning=FALSE}
 color_counts_Total <- color_counts %>% 
@@ -361,6 +374,18 @@ color_counts <- beyonce_lyrics %>%
   arrange(desc(n))
 color_counts
 ```
+
+```{r}
+color_counts %>% ungroup() %>% select(-Color) %>% group_by(song_name) %>% summarize(sum=sum(n)) %>% arrange(desc(sum))
+```
+
+```{r}
+color_counts %>% group_by(song_name) %>% count() %>% arrange(desc(n))
+```
+```{r}
+color_counts %>% filter(song_name=="Lemonade Film (Script)") %>% pull(Color)
+```
+
 
 ```{r message=FALSE, warning=FALSE}
 color_counts_Total <- color_counts %>% 
