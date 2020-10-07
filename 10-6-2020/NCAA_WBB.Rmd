@@ -1,0 +1,304 @@
+---
+title: "NCAA Womens Basketball"
+author: "Hunter Kempf"
+date: "10/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(usmap)
+library(patchwork)
+library(lubridate)
+```
+
+
+```{r}
+setwd("~/Documents/GitHub/Tidy-Tuesday")
+tournament <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-10-06/tournament.csv')
+state_results <- readr::read_csv("10-6-2020/geoMap.csv",skip=2)
+```
+
+
+
+
+```{r}
+top10_conf <- tournament %>% group_by(conference) %>% 
+  summarize(tournamentWins = sum(tourney_w)) %>%
+  arrange(desc(tournamentWins)) %>% top_n(10,tournamentWins) %>% pull(conference)
+
+top10_conf
+```
+
+cumulative sum graph over year by top 10 conferences
+
+```{r message=FALSE, warning=FALSE}
+plot_conf_cumulative_wins <- tournament %>% 
+  filter(conference %in% top10_conf) %>% 
+  group_by(conference,year) %>% 
+  summarize(totalTournamentWins = sum(tourney_w)) %>%
+  group_by(conference) %>%
+  mutate(cumulativeTournamentWins = cumsum(totalTournamentWins)) %>%
+  ungroup()
+```
+
+```{r}
+ggplot(
+  data = plot_conf_cumulative_wins,
+  aes(year,cumulativeTournamentWins, color=conference)
+) + geom_line()
+```
+
+```{r}
+ggplot(
+  data = plot_conf_cumulative_wins,
+  aes(year,totalTournamentWins, color=conference)
+) + geom_smooth(se = FALSE)
+```
+
+add a cumulative sum graph over year by top 10 schools
+
+```{r}
+tournament %>% group_by(school) %>% 
+  summarize(tournamentWins = sum(tourney_w),
+            avgSeed = mean(seed)) %>%
+  arrange(desc(tournamentWins))
+```
+
+
+
+```{r}
+since_2004 <- tournament %>% filter(year>=2004)
+```
+
+```{r}
+since_2004 %>% filter(year<=2011) %>% group_by(conference) %>% 
+  summarize(tournamentWins = sum(tourney_w)) %>%
+  arrange(desc(tournamentWins))
+```
+
+```{r}
+topSchools <- since_2004 %>% group_by(school) %>% 
+  summarize(tournamentWins = sum(tourney_w),
+            avgSeed = mean(seed)) %>%
+  arrange(desc(tournamentWins))
+top5Schools <- topSchools %>% top_n(5,tournamentWins) %>% pull(school)
+topSchools
+```
+
+```{r}
+since_2004 %>% filter(school %in% top5Schools) %>%
+  group_by(school, conference) %>%
+  summarize(years_list = paste(sort(unique(year)),collapse=", "))
+```
+
+
+```{r}
+schools_plot <- topSchools %>% 
+  top_n(5,tournamentWins) %>% 
+  # manually grabbed tournament wins for conferences in years the team played in that conference from 2004-present
+  mutate(conferenceTournamentWins = c(130+28,49+65,179,130,130+68),
+         perc = 100*tournamentWins/conferenceTournamentWins,
+         neg_perc = 100-perc
+         ) %>%
+  gather(key = "variable", value="perc",-tournamentWins, -avgSeed, -conferenceTournamentWins, -school) %>%
+  group_by(school) %>%
+  mutate( variable = ifelse(variable== "perc",paste0(variable,school),variable)) %>%
+  ungroup() %>%
+  mutate(school = factor(school,levels = c('UConn','Stanford','Tennessee','Baylor','Notre Dame')))
+schools_plot
+```
+```{r}
+UConn_color <- "#000E2F"
+Stanford_color <- "#8C1515"
+Tennessee_color <- "#FF8200"
+Baylor_color <- "#154734"
+Notre_Dame_color <- "#C99700"
+```
+
+```{r fig.height=4.51, fig.width=7.29, message=FALSE, warning=FALSE}
+ggplot(
+  data = schools_plot,
+  aes(x=school,y=perc, fill = variable)
+) + geom_col(position="fill") + 
+  scale_fill_manual(values = c("#FFFFFF",Baylor_color,Notre_Dame_color,Stanford_color,Tennessee_color,UConn_color)) + 
+  theme_bw() + 
+  labs(title = "Top 5 Tournament Teams", 
+       subtitle = "Winningest NCAA WBB Tournament Programs (2004-2020)",
+       caption="Source: fivethirtyeight | Analysis: @The_DataViz",
+       color = "Program",
+       x = "Year",
+       y = "% of Total Conference\nNCAA Tournament Wins") + 
+   theme(plot.title = element_text(face="bold"),
+         legend.position = "none",
+         panel.border = element_blank(),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank())
+ggsave("percConfWins.png")
+```
+
+
+school's share of conference's total tournament wins by year
+schools share of tournament wins all time (fill bar)
+
+
+```{r message=FALSE, warning=FALSE}
+plot_school_cumulative_wins <- since_2004 %>% 
+  filter(school %in% top5Schools) %>% 
+  group_by(school,year) %>% 
+  summarize(totalTournamentWins = sum(tourney_w)) %>%
+  group_by(school) %>%
+  mutate(cumulativeTournamentWins = cumsum(totalTournamentWins),
+         school = factor(school,levels = c('UConn','Stanford','Tennessee','Baylor','Notre Dame'))) %>%
+  ungroup()
+```
+
+```{r fig.height=4.51, fig.width=7.29, message=FALSE, warning=FALSE}
+ggplot(
+  data = plot_school_cumulative_wins,
+  aes(year,cumulativeTournamentWins, color=school)
+) + geom_line() + 
+  scale_color_manual(values = c(UConn_color,Stanford_color,Tennessee_color,Baylor_color,Notre_Dame_color)) +
+  theme_bw() + 
+  labs(title = "Top 5 Tournament Teams", 
+       subtitle = "Winningest NCAA WBB Tournament Programs (2004-2020)",
+       caption="Source: fivethirtyeight | Analysis: @The_DataViz",
+       color = "Program",
+       x = "Year",
+       y = "Cumulative Tournament Wins") + 
+   theme(plot.title = element_text(face="bold"))
+ggsave("cumulativeTournamentWins.png")
+```
+
+Map of Top 5 Programs in Tournament Games won since 2004 by Google Search ranking
+
+```{r}
+state_results %>% colnames()
+```
+
+
+```{r}
+state_perc <- state_results %>% mutate(
+  UConn = parse_number(`Connecticut Huskies women's basketball: (1/1/04 - 10/6/20)`),
+  Stanford = parse_number(`Stanford Cardinal women's basketball: (1/1/04 - 10/6/20)`),
+  Tennessee = parse_number(`Tennessee Volunteers women's basketball: (1/1/04 - 10/6/20)`),
+  Baylor = parse_number(`Baylor Lady Bears women's basketball: (1/1/04 - 10/6/20)`),
+  `Notre Dame` = parse_number(`Notre Dame Fighting Irish women's basketball: (1/1/04 - 10/6/20)`)
+) %>% select(Region,UConn,Stanford,Tennessee,Bayor,`Notre Dame`)
+topProgram <- colnames(state_perc%>% select(-Region))[max.col(state_perc %>% select(-Region),ties.method="first")]
+value <- apply(state_perc%>% select(-Region),1,max)
+state_perc <- state_perc %>% 
+  mutate(
+    Program = topProgram,
+    Program = factor(Program,levels = c('UConn','Stanford','Tennessee','Baylor','Notre Dame')),
+    Value = value/100
+  )%>%
+  select(state=Region,Program,Value)
+state_perc
+```
+
+```{r}
+UConn_states <- state_perc %>% filter(Program=="UConn")
+Stanford_states <- state_perc %>% filter(Program=="Stanford")
+Tennessee_states <- state_perc %>% filter(Program=="Tennessee")
+Baylor_states <- state_perc %>% filter(Program=="Baylor")
+Notre_Dame_states <- state_perc %>% filter(Program=="Notre Dame")
+```
+
+```{r message=FALSE, warning=FALSE}
+states_map <- plot_usmap(data = state_perc, values = "Program",color="grey") + 
+  scale_fill_manual(
+    values = c(UConn_color,Stanford_color,Tennessee_color,Baylor_color,Notre_Dame_color), name = "Program"
+  ) + theme(legend.position = "right",legend.title.align=0.5) + 
+  labs(title = "Top 5 Tournament Teams", 
+       subtitle = "Winningest NCAA WBB Tournament Programs (2004-2020)\nStates Colored by Most Popular Program from Google Search",
+       caption="Source: fivethirtyeight and Google Trends | Analysis: @The_DataViz") + 
+   theme(plot.title = element_text(face="bold"))
+states_map
+ggsave("google_map.png")
+```
+
+```{r message=FALSE, warning=FALSE}
+Uconn_map <- plot_usmap(data = UConn_states, values = "Value", color = "grey",include = UConn_states$state) + 
+  scale_fill_continuous(
+    low = "#FFFFFF", high = UConn_color, name = "",
+    limits = c(0,1),
+    label = scales::percent_format(accuracy = 1)) + 
+  theme(legend.position = "none")
+Uconn_map
+```
+
+```{r message=FALSE, warning=FALSE}
+Stanford_map <- plot_usmap(data = Stanford_states, values = "Value", color = "grey",include = Stanford_states$state) + 
+  scale_fill_continuous(
+    low = "#FFFFFF", high = Stanford_color, name = "",
+    limits = c(0,1),
+    label = scales::percent_format(accuracy = 1)) + 
+  theme(legend.position = "none")
+Stanford_map
+```
+
+```{r message=FALSE, warning=FALSE}
+Tennessee_map <- plot_usmap(data = Tennessee_states, values = "Value", color = "grey",include = Tennessee_states$state) + 
+  scale_fill_continuous(
+    low = "#FFFFFF", high = Tennessee_color, name = "",
+    limits = c(0,1),
+    label = scales::percent_format(accuracy = 1)) + 
+  theme(legend.position = "none")
+Tennessee_map
+```
+
+```{r message=FALSE, warning=FALSE}
+Baylor_map <- plot_usmap(data = Baylor_states, values = "Value", color = "grey",include = Baylor_states$state) + 
+  scale_fill_continuous(
+    low = "#FFFFFF", high = Baylor_color, name = "",
+    limits = c(0,1),
+    label = scales::percent_format(accuracy = 1)) + 
+  theme(legend.position = "none")
+Baylor_map
+```
+
+```{r message=FALSE, warning=FALSE}
+Notre_Dame_map <- plot_usmap(data = Notre_Dame_states, values = "Value", color = "grey",include = Notre_Dame_states$state) + 
+  scale_fill_continuous(
+    low = "#FFFFFF", high = Notre_Dame_color, name = "",
+    limits = c(0,1),
+    label = scales::percent_format(accuracy = 1)) + 
+  theme(legend.position = "none")
+Notre_Dame_map
+```
+
+```{r fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+schools <- plot_grid(Uconn_map, Stanford_map, Notre_Dame_map, Baylor_map, Tennessee_map,nrow = 2, byrow = FALSE)
+schools
+```
+
+
+```{r message=FALSE, warning=FALSE}
+combo <- plot_grid(states_map, schools,nrow = 2, byrow = FALSE)
+combo
+```
+
+
+```{r fig.height=6.19, fig.width=10, message=FALSE, warning=FALSE}
+title_gg <- ggplot() + 
+  labs(title = "Top 5 Tournament Teams", subtitle = "Most Successful NCAA Tournament Programs (2004-2020)\nStates Colored by Relative Google Search Popularity") + 
+  theme_bw() + theme(plot.title = element_text(face="bold"),
+                     panel.border = element_blank(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+caption_gg <- ggplot() + 
+  labs(caption="Source: fivethirtyeight and Google Trends | Analysis: @The_DataViz") + 
+  theme_bw() + 
+  theme(panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+plot_grid(title_gg, combo,caption_gg, ncol = 1, rel_heights = c(0.15, 1))
+
+```
+
+
