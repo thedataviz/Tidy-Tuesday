@@ -1,6 +1,6 @@
 ---
 title: "NCAA Womens Basketball"
-author: "Hunter Kempf"
+author: "The DataViz"
 date: "10/5/2020"
 output: html_document
 ---
@@ -67,6 +67,11 @@ tournament %>% group_by(school) %>%
   summarize(tournamentWins = sum(tourney_w),
             avgSeed = mean(seed)) %>%
   arrange(desc(tournamentWins))
+```
+
+```{r}
+champs <- tournament %>% filter(tourney_finish == "Champ") %>% group_by(school) %>% count() %>% arrange(desc(n))
+champs
 ```
 
 

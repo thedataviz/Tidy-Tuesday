@@ -1,0 +1,193 @@
+---
+title: "Great American Beer Awards"
+author: "The DataViz"
+date: "10/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggimage)
+```
+
+Tidy Tuesday Data from Great American Beer Festival
+```{r}
+beer_awards <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-10-20/beer_awards.csv')
+```
+
+### Additional Data from brewbound on craft breweries per state
+https://www.brewbound.com/breweries?displayOutOfBiz=False
+Data collected on 10/20/2020 by selecting the state and looking at the count on the map
+
+```{r}
+N <- 51
+craftBrewers <- data.frame(state=rep("", N),craftBreweriesCount=rep(NA, N),
+                 stringsAsFactors=FALSE)  
+craftBrewers[1, ] <- list("AL",29)
+craftBrewers[2, ] <- list("AK",32)
+craftBrewers[3, ] <- list("AZ",82)
+craftBrewers[4, ] <- list("AR",18)
+craftBrewers[5, ] <- list("CA",665)
+craftBrewers[6, ] <- list("CO",324)
+craftBrewers[7, ] <- list("CT",59)
+craftBrewers[8, ] <- list("DE",19)
+craftBrewers[9, ] <- list("DC",13)
+craftBrewers[10, ] <- list("FL",211)
+craftBrewers[11, ] <- list("GA",66)
+craftBrewers[12, ] <- list("HI",17)
+craftBrewers[13, ] <- list("ID",45)
+craftBrewers[14, ] <- list("IL",163)
+craftBrewers[15, ] <- list("IN",108)
+craftBrewers[16, ] <- list("IA",64)
+craftBrewers[17, ] <- list("KS",27)
+craftBrewers[18, ] <- list("KY",33)
+craftBrewers[19, ] <- list("LA",32)
+craftBrewers[20, ] <- list("ME",81)
+craftBrewers[21, ] <- list("MD",70)
+craftBrewers[22, ] <- list("MA",125)
+craftBrewers[23, ] <- list("MI",214)
+craftBrewers[24, ] <- list("MN",133)
+craftBrewers[25, ] <- list("MS",12)
+craftBrewers[26, ] <- list("MO",86)
+craftBrewers[27, ] <- list("MT",64)
+craftBrewers[28, ] <- list("NE",33)
+craftBrewers[29, ] <- list("NV",40)
+craftBrewers[30, ] <- list("NH",46)
+craftBrewers[31, ] <- list("NJ",89)
+craftBrewers[32, ] <- list("NM",53)
+craftBrewers[33, ] <- list("NY",315)
+craftBrewers[34, ] <- list("NC",198)
+craftBrewers[35, ] <- list("ND",9)
+craftBrewers[36, ] <- list("OH",155)
+craftBrewers[37, ] <- list("OK",24)
+craftBrewers[38, ] <- list("OR",217)
+craftBrewers[39, ] <- list("PA",109)
+craftBrewers[40, ] <- list("RI",16)
+craftBrewers[41, ] <- list("SC",57)
+craftBrewers[42, ] <- list("SD",15)
+craftBrewers[43, ] <- list("TN",73)
+craftBrewers[44, ] <- list("TX",218)
+craftBrewers[45, ] <- list("UT",24)
+craftBrewers[46, ] <- list("VT",44)
+craftBrewers[47, ] <- list("VA",168)
+craftBrewers[48, ] <- list("WA",291)
+craftBrewers[49, ] <- list("WV",24)
+craftBrewers[50, ] <- list("WI",143)
+craftBrewers[51, ] <- list("WY",22)
+```
+
+
+
+### Weighting of Medals using NY Times Point system described in the article below
+https://www.topendsports.com/events/summer/medal-tally/rankings-weighted.htm
+TLDR: Gold   = 4 
+      Silver = 2
+      Bronze = 1
+
+```{r}
+beer_awards <- beer_awards %>% 
+                  mutate(medal_NYTPoints = ifelse(medal=="Gold",4,ifelse(medal=="Silver",2,1)),
+                         state = ifelse(state=="wa","WA",state),
+                         state = ifelse(state=="Ak","AK",state))
+```
+
+## Group By Summaries
+
+```{r}
+statePoints <- beer_awards %>% group_by(state) %>% summarize(totalPoints = sum(medal_NYTPoints)) %>% 
+                   ungroup() %>% arrange(state)
+statePoints
+```
+
+
+```{r}
+brewersAndPoints <- craftBrewers %>% left_join(statePoints, by="state") 
+brewersAndPoints <- data.frame(state = state.abb,stateName = state.name) %>% inner_join(brewersAndPoints, by="state")
+```
+
+## West Virginia is the only state without a brewery with a top 3 finisher
+```{r}
+brewersAndPoints %>% filter(is.na(totalPoints))
+```
+
+
+```{r}
+statesBybrewersAndPoints <- brewersAndPoints %>% mutate(  totalPoints = replace_na(totalPoints,0),
+                              pointsPerCraftBrewer = totalPoints/craftBreweriesCount) %>% 
+                 slice_max(pointsPerCraftBrewer,n=10)
+statesBybrewersAndPoints
+```
+Add in Flag File Location to DF
+```{r}
+dir = "/Users/hunterkempf/Documents/GitHub/Tidy-Tuesday/"
+img = list.files(paste0(dir,'10-20-2020/','Flags'), full.names = TRUE)
+buttonImg = c()
+squareImg = c()
+for (imagePath in img){
+  if (grepl("button", imagePath, fixed = TRUE)){
+    buttonImg <- c(buttonImg,imagePath)
+  }
+  else{
+    squareImg <- c(squareImg,imagePath)
+  }
+}
+statesBybrewersAndPoints <- statesBybrewersAndPoints %>% arrange(state) %>% mutate(img = squareImg) %>% arrange(desc(pointsPerCraftBrewer)) %>% mutate(rank = 1:10) %>% 
+                                mutate(stateName = reorder(stateName,rank))
+```
+
+Make graph of top 10 states by pointsPerCraftBrewer
+Flags from VectorFlags.com
+
+```{r}
+statesBybrewersAndPoints %>% mutate(stateName = reorder(stateName,rank))
+```
+State Flag color scheme from www.schemecolor.com
+```{r}
+colors <- c("#002868", "#002868", "#76A1A0", "#002868", "#002A86", 
+            "#0F204B", "#002986", "#002A86", "#B71234",  "#AB0635")
+stripeColor <- c("#FFC324", "#FFFFFF", "#F0DC82", "#BF0A30", "#076A21", 
+            "#FFB612", "#FFCC18", "#FFEA0F", "#BD8A5E",  "#FFFFFF")
+ggplot(
+  data = statesBybrewersAndPoints,
+  aes(stateName,pointsPerCraftBrewer)
+  ) + 
+  ggpattern::geom_col_pattern(
+    aes(pattern = "stripe", fill = stateName, pattern_fill = stripeColor),
+    colour                   = 'black',
+    pattern_density          = 0.35,
+    pattern_key_scale_factor = 1.3) +
+  geom_image(y = -.5,
+             aes(image = img), 
+             size = rep(0.09, 10),  # Play with this a bit
+             by = "width") +
+  scale_fill_manual(values = colors) +
+  scale_color_manual(values = colors) +
+  scale_y_continuous(labels = scales::comma) +
+  expand_limits(y = -.6) +
+
+  labs(x = "", y="Medal Points per Craft Brewery",
+       title="Top 10 States By Medal Points per Craft Brewery",
+       subtitle = 'Using New York Times Medal Weighted Point System',
+       caption="Data Sources: Great American Beer Festival & brewbound.com\nFlag Image Source: VectorFlags.com | Analysis: @The_DataViz") +
+  theme_bw()+
+  theme(plot.title = element_text(face="bold"),
+        legend.position = "none")
+ggsave("pointsPerStatePerCraftBrewery.png")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,34 @@
+---
+title: "Untitled"
+author: "The DataViz"
+date: "10/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+## Load Data
+
+```{r}
+datasaurus <-readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-10-13/datasaurus.csv')
+```
+
+have all plots overlayed then pick out specifics with color and leave the rest of the points grey
+
+
+```{r}
+ggplot(
+  data = datasaurus,
+  aes(x,y,color=dataset)
+) + 
+  geom_point() + 
+  facet_wrap(~dataset) + 
+  theme(legend.position = "none")
+```
+
