@@ -11,6 +11,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tidyverse)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rgeos)
 ```
 
 
@@ -18,10 +21,6 @@ library(tidyverse)
 
 ```{r}
 wind_turbine <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-10-27/wind-turbine.csv')
-```
-
-```{r}
-wind_turbine
 ```
 
 
@@ -34,10 +33,20 @@ first_date <- function(date_string){
 first_date("2001/2002")
 ```
 
-
 ```{r}
 wind_turbine <- wind_turbine %>% mutate(year = sapply(commissioning_date,first_date))
 ```
+
+```{r}
+projects <- wind_turbine %>% group_by(project_name) %>% summarize(capacity = mean(total_project_capacity_mw),
+                                                                  latitude = mean(latitude),
+                                                                  longitude = mean(longitude),
+                                                                  province_territory = province_territory,
+                                                                  year = mean(year)) %>%
+          unique()
+```
+
+
 
 ## Wind Turbine Hight by Year
 
@@ -66,8 +75,8 @@ https://energyrates.ca/residential-electricity-natural-gas/#:~:text=Electricity%
 ```{r message=FALSE, warning=FALSE}
 MWh_in_year = 24*365
 avg_consumption = 11.135 #MWh per year
-cumulative_MW_added <- wind_turbine %>% group_by(year,province_territory) %>% 
-                 summarize(total_MW_added = sum(total_project_capacity_mw)) %>% 
+cumulative_MW_added <- projects %>% group_by(year,province_territory) %>% 
+                 summarize(total_MW_added = sum(capacity)) %>% 
                  ungroup() %>% group_by(province_territory) %>%
                  mutate(cumulative_MW = cumsum(total_MW_added),
                         households_covered = MWh_in_year*cumulative_MW/(avg_consumption))
@@ -75,7 +84,7 @@ cumulative_MW_added <- wind_turbine %>% group_by(year,province_territory) %>%
 
 
 ```{r fig.height=4.5, fig.width=8, message=FALSE, warning=FALSE}
-ylab <- c(0, 100, 200, 300)
+ylab <- c(0, 2, 4, 6)
 ggplot(
   data = cumulative_MW_added,
   aes(year,cumulative_MW, color = province_territory)
@@ -83,7 +92,7 @@ ggplot(
   facet_wrap(~province_territory) + 
   geom_point() + 
   geom_smooth(se=F,method = 'loess',formula = 'y ~ x') + 
-  scale_y_continuous(labels = paste0(ylab, "MWh"),
+  scale_y_continuous(labels = paste0(ylab, "GWh"),
                      breaks = 10^3 * ylab) + 
   labs(x = "", y="Wind Turbine Power Generation Capactiy",
        title="Harnessing the Wind",
@@ -95,6 +104,45 @@ ggplot(
 ggsave("CapacityByYearByProvence.png")
 ```
 
+```{r fig.height=4.5, fig.width=8, message=FALSE, warning=FALSE}
+ylab <- c(0, 1, 2, 3, 4)
+ggplot(
+  data = cumulative_MW_added,
+  aes(year,households_covered, color = province_territory)
+) + 
+  facet_wrap(~province_territory) + 
+  geom_point() + 
+  geom_smooth(se=F,method = 'loess',formula = 'y ~ x') + 
+  scale_y_continuous(labels = paste0(ylab, "M"),
+                     breaks = 10^6 * ylab) + 
+  scale_x_continuous(breaks = c(1995,2000,2005,2010,2015)) + 
+  labs(x = "", y="Equivalent Household Usage Generated*",
+       title="Harnessing the Wind",
+       subtitle = 'Ontario and Quebec Lead the Way in Wind Power',
+       caption="*Assuming Avg Household uses 11,135 kWh of electricity per year\nData Source: Government of Canada and energyrates.ca | Analysis: @The_DataViz") +
+  theme_bw()+
+  theme(plot.title = element_text(face="bold"),
+        legend.position = "none")
+ggsave("HouseholdsByYearByProvence.png")
+```
+
+```{r fig.height=5, fig.width=7.3, message=FALSE, warning=FALSE}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+ggplot(data = world) +
+    geom_sf() + 
+    coord_sf(xlim = c(-143.00275, -50.3273481), ylim = c(40.6765556, 83.3197975), expand = FALSE) + 
+    geom_point(data = projects,
+               aes(x = longitude, y = latitude, size = capacity,color=province_territory), alpha=.5) + 
+  labs(x = "", y="",
+       title="Harnessing the Wind",
+       subtitle = 'Canadian Wind Power Generation',
+       caption="Data Source: Government of Canada | Analysis: @The_DataViz",
+       color = "Province",
+       size = "Total Project\nCapacity [MW]") +
+  theme_bw()+
+  theme(plot.title = element_text(face="bold"))
+ggsave("GenerationMap.png")
+```
 
 
 
