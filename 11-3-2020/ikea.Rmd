@@ -1,0 +1,140 @@
+---
+title: "ikea"
+author: "The DataViz"
+date: "11/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# library
+```{r}
+library(tidyverse)
+library(ggimage)
+```
+
+## data
+
+```{r}
+ikea <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-11-03/ikea.csv')
+```
+
+```{r}
+ikea %>% select(category) %>% unique()
+```
+
+```{r}
+ikea %>% group_by(category) %>% summarize(count = n(),
+                                          minPrice =min(price),
+                                          avgPrice=mean(price),
+                                          maxPrice=max(price) 
+                                          ) %>% arrange(desc(count))
+```
+
+```{r}
+ikea %>% filter(category=="Tables & desks") %>% arrange(name)
+```
+
+
+```{r}
+ikea %>% filter(!grepl("/",name)) %>% arrange(name)
+```
+
+```{r}
+ikea %>% group_by(name) %>% count() %>% arrange(desc(n))
+```
+
+```{r}
+ikea %>% filter(name=="BESTÅ") 
+```
+
+most expensive vs cheapest 
+
+BESTA
+
+https://www.ikea.com/us/en/cat/besta-combinations-12150/?sort=priceAsc&page=4
+
+PAX
+https://www.ikea.com/us/en/cat/pax-system-19086/?sort=priceAsc&page=16
+min = https://www.ikea.com/us/en/p/pax-wardrobe-frame-white-60214569/
+max = https://www.ikea.com/us/en/p/pax-corner-wardrobe-white-tyssedal-tyssedal-glass-s39217980/
+
+```{r fig.height=6, fig.width=7}
+ggplot()+
+geom_image(aes(y = c(1.4),x = c(.2),image = "/Users/hunterkempf/Documents/GitHub/Tidy-Tuesday/11-3-2020/images/bekant-tabletop-white__0734697_PE739592_S5.jpg"), 
+             size = .3,  # Play with this a bit
+             by = "width") +
+geom_image(aes(y = c(1.4),x = c(.8),image = "/Users/hunterkempf/Documents/GitHub/Tidy-Tuesday/11-3-2020/images/bekant-desk-with-screen-linoleum-blue-black__0735006_PE739711_S5.jpg"), 
+             size = .4,  # Play with this a bit
+             by = "width") +
+geom_text(x=.45,y=1.53,aes(label = "BEKANT",hjust=.5)) +
+geom_text(x=.45,y=1.46,aes(label = "from",hjust=.5)) +
+geom_text(x=.45,y=1.39,aes(label = "$50",hjust=.5)) +
+geom_line(aes(x=c(.42,.36),y=c(1.4,1.4)),color="black",arrow = arrow(type = "closed",ends = "first",
+                                                                  length=unit(0.30,"cm")))+
+geom_text(x=.45,y=1.33,aes(label = "to",hjust=.5)) +
+geom_text(x=.45,y=1.27,aes(label = "$1,472",hjust=.5)) +
+geom_line(aes(x=c(.50,.55),y=c(1.27,1.27)),color="black",arrow = arrow(type = "closed",length=unit(0.30,"cm")))+
+geom_image(aes(y = c(.45),x = c(.8),
+           image = "/Users/hunterkempf/Documents/GitHub/Tidy-Tuesday/11-3-2020/images/pax-corner-wardrobe-white-tyssedal-tyssedal-glass__0625985_PE692553_S5.JPG"), 
+             size = .4,  # Play with this a bit
+             by = "width") +
+geom_image(aes(y = c(.45),x = c(.2),image = "/Users/hunterkempf/Documents/GitHub/Tidy-Tuesday/11-3-2020/images/pax-wardrobe-frame-white__0721079_PE733045_S5.jpg"), 
+             size = .4,  # Play with this a bit
+             by = "width") +
+geom_text(x=.45,y=.55,aes(label = "PAX",hjust=.5)) +
+geom_text(x=.45,y=.49,aes(label = "from",hjust=.5)) +
+geom_text(x=.45,y=.41,aes(label = "$75",hjust=.5)) +
+geom_line(aes(x=c(.40,.3),y=c(.41,.41)),color="black",arrow = arrow(type = "closed",ends = "first",
+                                                                  length=unit(0.30,"cm")))+
+geom_text(x=.45,y=.35,aes(label = "to",hjust=.5)) +
+geom_text(x=.45,y=.27,aes(label = "$1,735",hjust=.5)) +
+geom_line(aes(x=c(.50,.55),y=c(.27,.27)),color="black",arrow = arrow(type = "closed",length=unit(0.30,"cm")))+
+geom_image(aes(y = c(-.6),x = c(.2),image = "/Users/hunterkempf/Documents/GitHub/Tidy-Tuesday/11-3-2020/images/besta-cabinet-walnut-effect-light-gray__0750529_PE746772_S5.jpg"), 
+             size = .4,  # Play with this a bit
+             by = "width") +
+geom_image(aes(y = c(-.6),x = c(.8),image = "/Users/hunterkempf/Documents/GitHub/Tidy-Tuesday/11-3-2020/images/besta-tv-storage-combination-glass-doors-lappviken-sindvik-gray-stained-walnut-eff-clear-glass__0645024_PE703180_S5.jpg"), 
+             size = .4,  # Play with this a bit
+             by = "width") +
+geom_text(x=.45,y=-.3,aes(label = "BESTÅ",hjust=.5)) +
+geom_text(x=.45,y=-.37,aes(label = "from",hjust=.5)) +
+geom_text(x=.45,y=-.45,aes(label = "$135",hjust=.5)) +
+geom_line(aes(x=c(.40,.3),y=c(-.45,-.45)),color="black",arrow = arrow(type = "closed",ends = "first",
+                                                                  length=unit(0.30,"cm")))+
+geom_text(x=.45,y=-.52,aes(label = "to",hjust=.5)) +
+geom_text(x=.45,y=-.6,aes(label = "$929",hjust=.5)) +
+geom_line(aes(x=c(.50,.55),y=c(-.6,-.6)),color="black",arrow = arrow(type = "closed",length=unit(0.30,"cm")))+
+  theme_void() +
+  ylim(c(-1,1.6))+
+  xlim(c(0,1))+
+labs(x = "", y="Medal Points per Craft Brewery",
+       title="Same Name Different Price",
+       subtitle = 'A look at the price ranges of IKEA Product lines',
+       caption="Data Source: IKEA | Analysis: @The_DataViz") +
+theme(plot.title = element_text(face="bold"),
+        legend.position = "none")
+ggsave("IKEA_Products.png")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
